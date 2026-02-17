@@ -1,19 +1,75 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useContext, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, LogOut, Building2, GraduationCap, Trash2 } from 'lucide-react-native';
+import { User, LogOut, Building2, GraduationCap, Trash2, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Picker } from '@react-native-picker/picker';
 import { COLORS } from '../constants/colors';
+import { AuthContext } from '../context/AuthContext';
+
+const FACULTIES = [
+    'ศิลปศาสตร์และวิทยาศาสตร์',
+    'วิศวกรรมศาสตร์',
+    'คณะเกษตร',
+    'คณะประมง',
+    'คณะสัตวแพทย์',
+    'คณะวิทยาศาสตร์การกีฬา',
+    'คณะศึกษาศาสตร์และพัฒนศาสตร์',
+    'คณะสิ่งแวดล้อม',
+    'คณะอุตสาหกรรมบริการ'
+];
+
+const YEARS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
 export default function ProfileScreen() {
-    const [name, setName] = useState('สมชาย ใจดี');
+    const { userInfo, logout, updateProfile, deleteAccount } = useContext(AuthContext);
+    const [name, setName] = useState('');
     const [faculty, setFaculty] = useState('วิศวกรรมศาสตร์');
-    const [year, setYear] = useState('เลือกชั้นปี');
+    const [year, setYear] = useState('1');
+
+    // Initialize state with user info
+    useEffect(() => {
+        if (userInfo) {
+            setName(userInfo.name || '');
+            setFaculty(userInfo.faculty || 'วิศวกรรมศาสตร์');
+            setYear(userInfo.year || '1');
+        }
+    }, [userInfo]);
+
+    const handleSave = async () => {
+        try {
+            await updateProfile({ name, faculty, year });
+            Alert.alert('Success', 'Profile updated successfully');
+        } catch (e) {
+            Alert.alert('Error', 'Failed to update profile');
+        }
+    };
+
+    const handleDelete = () => {
+        Alert.alert(
+            'Delete Data',
+            'Are you sure you want to delete all your data and account? This action cannot be undone.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await deleteAccount();
+                        } catch (e) {
+                            Alert.alert('Error', 'Failed to delete account');
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.appName}>StudeySync</Text>
-                <Text style={styles.greeting}>สวัสดี สมชาย ใจดี</Text>
+                <Text style={styles.appName}>StudySync</Text>
+                <Text style={styles.greeting}>สวัสดี {name}</Text>
             </View>
             <View style={styles.divider} />
 
@@ -31,14 +87,14 @@ export default function ProfileScreen() {
                                 </View>
                                 <View style={styles.userInfoText}>
                                     <Text style={styles.userLabel}>ชื่อผู้ใช้</Text>
-                                    <Text style={styles.userName}>Somchai</Text>
+                                    <Text style={styles.userName}>{userInfo?.name}</Text>
                                 </View>
-                            </View>
 
-                            <TouchableOpacity style={styles.logoutButton}>
-                                <LogOut size={20} color={COLORS.white} style={{ marginRight: 10 }} />
-                                <Text style={styles.logoutText}>ออกจากระบบ</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+                                    <LogOut size={20} color={COLORS.white} style={{ marginRight: 10 }} />
+                                    <Text style={styles.logoutText}>ออกจากระบบ</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
 
@@ -64,12 +120,18 @@ export default function ProfileScreen() {
                                     <Building2 size={18} color={COLORS.textSecondary} />
                                     <Text style={styles.inputLabel}>คณะ/สาขา</Text>
                                 </View>
-                                <TextInput
-                                    style={styles.input}
-                                    value={faculty}
-                                    onChangeText={setFaculty}
-                                    placeholder="เช่น วิศวกรรมศาสตร์"
-                                />
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={faculty}
+                                        onValueChange={(itemValue) => setFaculty(itemValue)}
+                                        style={styles.picker}
+                                        dropdownIconColor={COLORS.textSecondary}
+                                    >
+                                        {FACULTIES.map((item, index) => (
+                                            <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
+                                        ))}
+                                    </Picker>
+                                </View>
                             </View>
 
                             <View style={styles.inputGroup}>
@@ -77,16 +139,32 @@ export default function ProfileScreen() {
                                     <GraduationCap size={18} color={COLORS.textSecondary} />
                                     <Text style={styles.inputLabel}>ชั้นปี</Text>
                                 </View>
-                                <TouchableOpacity style={styles.dropdown}>
-                                    <Text style={styles.dropdownText}>{year}</Text>
-                                </TouchableOpacity>
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={year}
+                                        onValueChange={(itemValue) => setYear(itemValue)}
+                                        style={styles.picker}
+                                        dropdownIconColor={COLORS.textSecondary}
+                                    >
+                                        <Picker.Item label="เลือกชั้นปี" value="" color={COLORS.textSecondary} style={{ fontSize: 16 }} enabled={false} />
+                                        {YEARS.map((item, index) => (
+                                            <Picker.Item key={index} label={`ปี ${item}`} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
+                                        ))}
+                                    </Picker>
+                                </View>
                             </View>
 
                             <View style={styles.actionButtonsContainer}>
-                                <TouchableOpacity style={[styles.button, styles.saveButton]}>
+                                <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
                                     <Text style={styles.saveButtonText}>บันทึก</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[styles.button, styles.cancelButton]}>
+                                <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => {
+                                    if (userInfo) {
+                                        setName(userInfo.name || '');
+                                        setFaculty(userInfo.faculty || 'วิศวกรรมศาสตร์');
+                                        setYear(userInfo.year || '1');
+                                    }
+                                }}>
                                     <Text style={styles.cancelButtonText}>ยกเลิก</Text>
                                 </TouchableOpacity>
                             </View>
@@ -94,7 +172,7 @@ export default function ProfileScreen() {
                         </View>
                     </View>
 
-                    <TouchableOpacity style={styles.deleteButton}>
+                    <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
                         <Trash2 size={20} color={COLORS.white} style={{ marginRight: 10 }} />
                         <Text style={styles.deleteButtonText}>ลบข้อมูล</Text>
                     </TouchableOpacity>
@@ -238,7 +316,9 @@ const styles = StyleSheet.create({
         borderColor: COLORS.border,
         borderRadius: 8,
         padding: 12,
-        justifyContent: 'center',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     dropdownText: {
         fontSize: 16,
@@ -280,7 +360,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: 15,
-        borderRadius: 12, // Match card radius or button radius? Let's use 12 to match cards or 10
         borderRadius: 10,
         marginTop: 20,
     },
@@ -288,5 +367,34 @@ const styles = StyleSheet.create({
         color: COLORS.white,
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    dropdownList: {
+        marginTop: 5,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 8,
+        backgroundColor: COLORS.white,
+        overflow: 'hidden',
+    },
+    dropdownItem: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    dropdownItemText: {
+        fontSize: 16,
+        color: COLORS.text,
+    },
+    pickerContainer: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 8,
+        backgroundColor: COLORS.white,
+        overflow: 'hidden', // Ensures the picker stays within rounded corners
+    },
+    picker: {
+        width: '100%',
+        backgroundColor: 'transparent',
+        color: COLORS.text,
     },
 });
