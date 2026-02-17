@@ -1,17 +1,20 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookOpen, AlertCircle, Plus, Clock } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
+import { AuthContext } from '../context/AuthContext';
 
 export default function DashboardScreen() {
+    const { userInfo } = useContext(AuthContext);
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.appName}>StudeySync</Text>
-                    <Text style={styles.greeting}>สวัสดี สมชาย ใจดี</Text>
+                    <Text style={styles.greeting}>สวัสดี {userInfo?.name}</Text>
                 </View>
 
                 <View style={styles.divider} />
