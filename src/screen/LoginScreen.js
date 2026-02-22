@@ -37,7 +37,7 @@ export default function LoginScreen({ navigation }) {
                     <View style={styles.content}>
                         <View style={styles.header}>
                             <View style={styles.logoContainer}>
-                                <BookOpen size={40} color="#f94f8a" />
+                                <BookOpen size={40} color={COLORS.primary} />
                             </View>
                             <Text style={styles.appName}>StudySync</Text>
                             <Text style={styles.appSubtitle}>Academic Life Planner</Text>
@@ -48,7 +48,7 @@ export default function LoginScreen({ navigation }) {
 
                             <View style={styles.inputWrapper}>
                                 <View style={styles.labelContainer}>
-                                    <User size={16} color="#888" />
+                                    <User size={16} color={COLORS.textSecondary} />
                                     <Text style={styles.label}>ชื่อผู้ใช้</Text>
                                 </View>
                                 <TextInput
@@ -63,7 +63,7 @@ export default function LoginScreen({ navigation }) {
 
                             <View style={styles.inputWrapper}>
                                 <View style={styles.labelContainer}>
-                                    <Lock size={16} color="#888" />
+                                    <Lock size={16} color={COLORS.textSecondary} />
                                     <Text style={styles.label}>รหัสผ่าน</Text>
                                 </View>
                                 <TextInput
@@ -116,42 +116,35 @@ const styles = StyleSheet.create({
     logoContainer: {
         width: 80,
         height: 80,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.white,
         borderRadius: 40,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 15,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        ...COLORS.cardShadow,
     },
     appName: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#fff',
+        color: COLORS.white,
         marginBottom: 5,
     },
     appSubtitle: {
         fontSize: 16,
-        color: '#fff',
+        color: COLORS.white,
         opacity: 0.9,
     },
     card: {
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.white,
         borderRadius: 20,
         padding: 25,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
+        ...COLORS.cardShadow,
         elevation: 5,
     },
     cardTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#333',
+        color: COLORS.text,
         textAlign: 'center',
         marginBottom: 25,
     },
@@ -165,22 +158,22 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        color: '#555',
+        color: COLORS.textSecondary,
         marginLeft: 8,
         fontWeight: '500',
     },
     input: {
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: COLORS.border,
         borderRadius: 12,
         paddingHorizontal: 15,
         height: 50,
         fontSize: 16,
-        color: '#333',
-        backgroundColor: '#F9F9F9',
+        color: COLORS.text,
+        backgroundColor: COLORS.inputBackground,
     },
     loginButton: {
-        backgroundColor: '#d85784',
+        backgroundColor: COLORS.primary,
         borderRadius: 12,
         height: 50,
         justifyContent: 'center',
@@ -188,7 +181,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     loginButtonText: {
-        color: '#fff',
+        color: COLORS.white,
         fontSize: 18,
         fontWeight: 'bold',
     },
@@ -198,11 +191,11 @@ const styles = StyleSheet.create({
         marginTop: 25,
     },
     registerText: {
-        color: '#666',
+        color: COLORS.textSecondary,
         fontSize: 14,
     },
     registerLink: {
-        color: '#d85784',
+        color: COLORS.primary,
         fontSize: 14,
         fontWeight: 'bold',
     },

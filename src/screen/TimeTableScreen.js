@@ -95,23 +95,23 @@ export default function TimeTableScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.background,
     },
     header: {
         paddingHorizontal: 20,
         paddingTop: 15,
         paddingBottom: 15,
         borderBottomWidth: 4,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: COLORS.border,
     },
     logoText: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#f94f8a', // Using the pink from the design
+        color: COLORS.primary,
     },
     greetingText: {
         fontSize: 14,
-        color: '#888',
+        color: COLORS.textSecondary,
         marginTop: 2,
     },
     subheader: {
@@ -122,20 +122,20 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#000',
+        color: COLORS.text,
     },
     sectionSubtitle: {
         fontSize: 14,
-        color: '#666',
+        color: COLORS.textSecondary,
         marginTop: 4,
     },
     tabContainer: {
         flexDirection: 'row',
         marginHorizontal: 20,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.background,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: COLORS.border,
         overflow: 'hidden',
         marginBottom: 15,
     },
@@ -146,19 +146,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     activeTabButton: {
-        backgroundColor: '#ea6999', // Slightly softer pink for active tab
+        backgroundColor: COLORS.primary,
     },
     tabText: {
         fontSize: 14,
-        color: '#888',
+        color: COLORS.textSecondary,
         fontWeight: '500',
     },
     activeTabText: {
-        color: '#FFFFFF',
+        color: COLORS.white,
         fontWeight: 'bold',
     },
     addButton: {
-        backgroundColor: '#d85784',
+        backgroundColor: COLORS.primary,
         marginHorizontal: 20,
         borderRadius: 10,
         paddingVertical: 14,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     addButtonText: {
-        color: '#FFFFFF',
+        color: COLORS.white,
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -175,17 +175,13 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     card: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.white,
         borderRadius: 12,
         padding: 15,
         marginBottom: 15,
         borderWidth: 1,
-        borderColor: '#F0F0F0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 2,
+        borderColor: COLORS.border,
+        ...COLORS.cardShadow,
         minHeight: 120, // To give it the rectangular shape shown in the design
     },
     examCard: {
@@ -204,6 +200,6 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
-        color: '#C0C0C0',
+        color: COLORS.textSecondary,
     },
 });
