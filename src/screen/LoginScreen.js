@@ -1,9 +1,10 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import { AuthContext } from '../context/AuthContext';
-import { Mail, Lock } from 'lucide-react-native';
+import { User, Lock, BookOpen } from 'lucide-react-native';
 
 export default function LoginScreen({ navigation }) {
     const { login } = useContext(AuthContext);
@@ -24,62 +25,81 @@ export default function LoginScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.keyboardView}
-            >
-                <View style={styles.content}>
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Welcome Back</Text>
-                        <Text style={styles.subtitle}>Sign in to continue to StudySync</Text>
-                    </View>
-
-                    <View style={styles.form}>
-                        <View style={styles.inputContainer}>
-                            <Mail size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Email"
-                                value={email}
-                                onChangeText={setEmail}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                            />
+        <LinearGradient
+            colors={['#ffa6c9', '#f94f8a']}
+            style={styles.container}
+        >
+            <SafeAreaView style={styles.safeArea}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.keyboardView}
+                >
+                    <View style={styles.content}>
+                        <View style={styles.header}>
+                            <View style={styles.logoContainer}>
+                                <BookOpen size={40} color="#f94f8a" />
+                            </View>
+                            <Text style={styles.appName}>StudySync</Text>
+                            <Text style={styles.appSubtitle}>Academic Life Planner</Text>
                         </View>
 
-                        <View style={styles.inputContainer}>
-                            <Lock size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
-                        </View>
+                        <View style={styles.card}>
+                            <Text style={styles.cardTitle}>เข้าสู่ระบบ</Text>
 
-                        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                            <Text style={styles.loginButtonText}>Login</Text>
-                        </TouchableOpacity>
+                            <View style={styles.inputWrapper}>
+                                <View style={styles.labelContainer}>
+                                    <User size={16} color="#888" />
+                                    <Text style={styles.label}>ชื่อผู้ใช้</Text>
+                                </View>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="กรอกชื่อผู้ใช้"
+                                    placeholderTextColor="#ccc"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                />
+                            </View>
 
-                        <View style={styles.registerContainer}>
-                            <Text style={styles.registerText}>Don't have an account? </Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                                <Text style={styles.registerLink}>Sign Up</Text>
+                            <View style={styles.inputWrapper}>
+                                <View style={styles.labelContainer}>
+                                    <Lock size={16} color="#888" />
+                                    <Text style={styles.label}>รหัสผ่าน</Text>
+                                </View>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="กรอกรหัสผ่าน"
+                                    placeholderTextColor="#ccc"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                />
+                            </View>
+
+                            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+                                <Text style={styles.loginButtonText}>เข้าสู่ระบบ</Text>
                             </TouchableOpacity>
+
+                            <View style={styles.registerContainer}>
+                                <Text style={styles.registerText}>ยังไม่มีบัญชี? </Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                                    <Text style={styles.registerLink}>สมัครสมาชิก</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+    },
+    safeArea: {
+        flex: 1,
     },
     keyboardView: {
         flex: 1,
@@ -90,72 +110,100 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     header: {
-        marginBottom: 40,
         alignItems: 'center',
+        marginBottom: 30,
     },
-    title: {
-        fontSize: 32,
+    logoContainer: {
+        width: 80,
+        height: 80,
+        backgroundColor: '#fff',
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    appName: {
+        fontSize: 28,
         fontWeight: 'bold',
-        color: COLORS.primary,
-        marginBottom: 10,
+        color: '#fff',
+        marginBottom: 5,
     },
-    subtitle: {
+    appSubtitle: {
         fontSize: 16,
-        color: COLORS.textSecondary,
+        color: '#fff',
+        opacity: 0.9,
     },
-    form: {
-        width: '100%',
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 25,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 5,
     },
-    inputContainer: {
+    cardTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#333',
+        textAlign: 'center',
+        marginBottom: 25,
+    },
+    inputWrapper: {
+        marginBottom: 20,
+    },
+    labelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        marginBottom: 20,
-        backgroundColor: COLORS.white,
-        height: 55,
+        marginBottom: 8,
     },
-    inputIcon: {
-        marginRight: 10,
+    label: {
+        fontSize: 14,
+        color: '#555',
+        marginLeft: 8,
+        fontWeight: '500',
     },
     input: {
-        flex: 1,
-        height: '100%',
-        color: COLORS.text,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 12,
+        paddingHorizontal: 15,
+        height: 50,
         fontSize: 16,
+        color: '#333',
+        backgroundColor: '#F9F9F9',
     },
     loginButton: {
-        backgroundColor: COLORS.primary,
+        backgroundColor: '#d85784',
         borderRadius: 12,
-        height: 55,
+        height: 50,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 10,
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 5,
     },
     loginButtonText: {
-        color: COLORS.white,
+        color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
     },
     registerContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 30,
+        marginTop: 25,
     },
     registerText: {
-        color: COLORS.textSecondary,
-        fontSize: 16,
+        color: '#666',
+        fontSize: 14,
     },
     registerLink: {
-        color: COLORS.primary,
-        fontSize: 16,
+        color: '#d85784',
+        fontSize: 14,
         fontWeight: 'bold',
     },
 });

@@ -1,6 +1,6 @@
 export const COLORS = {
-    primary: '#DE5676', // Chula Pink
-    secondary: '#F8D7DA', // Light Pink
+    primary: '#DE5676',
+    secondary: '#F8D7DA',
     background: '#FFFFFF',
     text: '#333333',
     textSecondary: '#666666',
