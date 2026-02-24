@@ -1,12 +1,79 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookOpen, AlertCircle, Plus, Clock } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { AuthContext } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+
+const getNextClass = (courses) => {
+    if (!courses || courses.length === 0) return null;
+
+    const dayMap = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+    const now = new Date();
+    const currentDayIndex = now.getDay();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    let upcomingClasses = [];
+
+    courses.forEach(course => {
+        if (!course.startTime || !course.endTime) return;
+        const courseDate = new Date(course.startTime);
+        const startMinutes = courseDate.getHours() * 60 + courseDate.getMinutes();
+
+        const endDate = new Date(course.endTime);
+        const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
+
+        const courseDayIndex = dayMap.indexOf(course.day);
+
+        let daysAhead = (courseDayIndex - currentDayIndex + 7) % 7;
+
+        if (daysAhead === 0 && endMinutes <= currentMinutes) {
+            daysAhead = 7;
+        }
+
+        const exactTimeAheadMinutes = daysAhead * 24 * 60 + startMinutes - currentMinutes;
+
+        upcomingClasses.push({
+            ...course,
+            exactTimeAheadMinutes,
+        });
+    });
+
+    upcomingClasses.sort((a, b) => a.exactTimeAheadMinutes - b.exactTimeAheadMinutes);
+
+    return upcomingClasses[0] || null;
+};
 
 export default function DashboardScreen() {
     const { userInfo } = useContext(AuthContext);
+    const [nextClass, setNextClass] = useState(null);
+    const isFocused = useIsFocused();
+    const navigation = useNavigation();
+
+    const fetchNextClass = async () => {
+        if (!userInfo) return;
+        try {
+            const key = `@courses_${userInfo.email}`;
+            const storedCourses = await AsyncStorage.getItem(key);
+            if (storedCourses) {
+                const courses = JSON.parse(storedCourses);
+                const next = getNextClass(courses);
+                setNextClass(next);
+            } else {
+                setNextClass(null);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    useEffect(() => {
+        if (isFocused) {
+            fetchNextClass();
+        }
+    }, [isFocused, userInfo]);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -29,13 +96,28 @@ export default function DashboardScreen() {
                             <Clock size={20} color={COLORS.primary} />
                             <Text style={styles.cardTitle}>Next Class</Text>
                         </View>
-                        <View style={styles.emptyState}>
-                            <BookOpen size={48} color="#E0E0E0" />
-                            <Text style={styles.emptyStateText}>ไม่มีคาบเรียนถัดไป</Text>
-                            <TouchableOpacity>
-                                <Text style={styles.linkText}>เพิ่มตารางเรียน</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {nextClass ? (
+                            <View style={styles.nextClassWrapper}>
+                                <View style={styles.nextClassTimeRow}>
+                                    <View style={styles.nextClassDayBadge}>
+                                        <Text style={styles.nextClassDayText}>{nextClass.day}</Text>
+                                    </View>
+                                    <Text style={styles.nextClassTime}>
+                                        {new Date(nextClass.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(nextClass.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    </Text>
+                                </View>
+                                <Text style={styles.nextClassName}>{nextClass.subjectCode} {nextClass.subjectName}</Text>
+                                <Text style={styles.nextClassRoom}>ห้อง: {nextClass.room}</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <BookOpen size={48} color="#E0E0E0" />
+                                <Text style={styles.emptyStateText}>ไม่มีคาบเรียนถัดไป</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Time Table')}>
+                                    <Text style={styles.linkText}>เพิ่มตารางเรียน</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
 
                     {/* Upcoming Exams Card */}
@@ -147,6 +229,42 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLORS.primary, // Chula Pink
         textDecorationLine: 'none',
+    },
+    nextClassWrapper: {
+        paddingTop: 5,
+        paddingBottom: 5,
+    },
+    nextClassTimeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    nextClassDayBadge: {
+        backgroundColor: COLORS.primary + '20', // transparent primary
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+        marginRight: 10,
+    },
+    nextClassDayText: {
+        color: COLORS.primary,
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    nextClassTime: {
+        fontSize: 14,
+        color: COLORS.text,
+        fontWeight: 'bold',
+    },
+    nextClassName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: COLORS.text,
+        marginBottom: 4,
+    },
+    nextClassRoom: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
     },
     actionButton: {
         backgroundColor: '#3B82F6', // The blue from the image, but maybe we should use primary?
