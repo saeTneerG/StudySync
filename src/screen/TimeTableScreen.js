@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Modal, TextInput, Alert, Platform } from 'react-native';
+import React, { useState, useContext, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { COLORS } from '../constants/colors';
-import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db } from '../config/firebase';
+import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { AuthContext } from '../context/AuthContext';
 import ScheduleTab from '../components/ScheduleTab';
 import ExamTab from '../components/ExamTab';
 import AddCourseModal from '../components/AddCourseModal';
 import AddExamModal from '../components/AddExamModal';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function TimeTableScreen() {
     const { userInfo } = useContext(AuthContext);
@@ -16,7 +16,6 @@ export default function TimeTableScreen() {
     const [activeTab, setActiveTab] = useState('schedule');
 
     const [courses, setCourses] = useState([]);
-    const [exams, setExams] = useState([]);
 
     const [modalVisible, setModalVisible] = useState(false);
     const [examModalVisible, setExamModalVisible] = useState(false);
@@ -32,75 +31,103 @@ export default function TimeTableScreen() {
     ];
 
     const loadData = async () => {
-        if (!userInfo) return;
+        if (!userInfo || !userInfo.id) return;
         try {
-            const courseKey = `@courses_${userInfo.email}`;
-            const storedCourses = await AsyncStorage.getItem(courseKey);
-            if (storedCourses) {
-                setCourses(JSON.parse(storedCourses));
-            }
+            const coursesRef = collection(db, "users", userInfo.id, "courses");
+            const snapshot = await getDocs(coursesRef);
 
-            const examKey = `@exams_${userInfo.email}`;
-            const storedExams = await AsyncStorage.getItem(examKey);
-            if (storedExams) {
-                setExams(JSON.parse(storedExams));
-            }
+            let loadedCourses = [];
+            snapshot.forEach((doc) => {
+                loadedCourses.push({ id: doc.id, ...doc.data() });
+            });
+
+            // Ensure all courses have an exams array
+            loadedCourses = loadedCourses.map(c => ({
+                ...c,
+                exams: c.exams || []
+            }));
+
+            setCourses(loadedCourses);
         } catch (e) {
-            console.error("Failed to load data", e);
+            console.error("Failed to load data from Firestore", e);
         }
     };
 
-    useEffect(() => {
-        loadData();
-    }, [userInfo]);
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+        }, [userInfo])
+    );
 
     const handleAddCourse = async (newCourse) => {
-        const updatedCourses = [...courses, newCourse];
+        if (!userInfo || !userInfo.id) return;
+        const courseWithExams = { ...newCourse, exams: [] };
+
+        // Optimistic update
+        const updatedCourses = [...courses, courseWithExams];
         setCourses(updatedCourses);
 
         try {
-            if (userInfo) {
-                const key = `@courses_${userInfo.email}`;
-                await AsyncStorage.setItem(key, JSON.stringify(updatedCourses));
-            }
+            const courseRef = doc(db, "users", userInfo.id, "courses", newCourse.id);
+            await setDoc(courseRef, courseWithExams);
             setModalVisible(false);
         } catch (e) {
-            console.error("Failed to save course", e);
+            console.error("Failed to save course to Firestore", e);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถบันทึกข้อมูลได้");
+            // Revert optimistic update on failure
+            setCourses(courses);
         }
     };
 
     const handleAddExam = async (newExam) => {
-        const updatedExams = [...exams, newExam];
-        setExams(updatedExams);
+        if (!userInfo || !userInfo.id) return;
+
+        let targetCourse = null;
+        const updatedCourses = courses.map(course => {
+            if (course.id === newExam.courseId) {
+                targetCourse = { ...course, exams: [...course.exams, newExam] };
+                return targetCourse;
+            }
+            return course;
+        });
+
+        if (!targetCourse) return;
+
+        setCourses(updatedCourses);
 
         try {
-            if (userInfo) {
-                const key = `@exams_${userInfo.email}`;
-                await AsyncStorage.setItem(key, JSON.stringify(updatedExams));
-            }
+            const courseRef = doc(db, "users", userInfo.id, "courses", targetCourse.id);
+            await setDoc(courseRef, targetCourse);
             setExamModalVisible(false);
         } catch (e) {
-            console.error("Failed to save exam", e);
+            console.error("Failed to save exam to Firestore", e);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถบันทึกข้อมูลได้");
+            setCourses(courses);
         }
     };
 
     const handleDeleteCourse = (id) => {
         Alert.alert(
             "ยืนยันการลบ",
-            "คุณต้องการลบวิชานี้ใช่หรือไม่?",
+            "คุณต้องการลบวิชานี้และข้อมูลที่เกี่ยวข้อง (เช่น ตารางสอบ) ใช่หรือไม่?",
             [
                 { text: "ยกเลิก", style: "cancel" },
                 {
                     text: "ลบ",
                     style: "destructive",
                     onPress: async () => {
+                        if (!userInfo || !userInfo.id) return;
+                        const previousCourses = [...courses];
                         const updatedCourses = courses.filter(course => course.id !== id);
                         setCourses(updatedCourses);
-                        if (userInfo) {
-                            const key = `@courses_${userInfo.email}`;
-                            await AsyncStorage.setItem(key, JSON.stringify(updatedCourses));
+
+                        try {
+                            const courseRef = doc(db, "users", userInfo.id, "courses", id);
+                            await deleteDoc(courseRef);
+                        } catch (error) {
+                            console.error("Failed to delete course from Firestore", error);
+                            setCourses(previousCourses);
+                            Alert.alert("ข้อผิดพลาด", "ไม่สามารถลบข้อมูลได้");
                         }
                     }
                 }
@@ -108,7 +135,7 @@ export default function TimeTableScreen() {
         );
     };
 
-    const handleDeleteExam = (id) => {
+    const handleDeleteExam = (examId, courseId) => {
         Alert.alert(
             "ยืนยันการลบ",
             "คุณต้องการลบตารางสอบนี้ใช่หรือไม่?",
@@ -118,17 +145,49 @@ export default function TimeTableScreen() {
                     text: "ลบ",
                     style: "destructive",
                     onPress: async () => {
-                        const updatedExams = exams.filter(exam => exam.id !== id);
-                        setExams(updatedExams);
-                        if (userInfo) {
-                            const key = `@exams_${userInfo.email}`;
-                            await AsyncStorage.setItem(key, JSON.stringify(updatedExams));
+                        if (!userInfo || !userInfo.id) return;
+                        const previousCourses = [...courses];
+                        let targetCourse = null;
+
+                        const updatedCourses = courses.map(course => {
+                            if (course.id === courseId) {
+                                targetCourse = {
+                                    ...course,
+                                    exams: course.exams.filter(e => e.id !== examId)
+                                };
+                                return targetCourse;
+                            }
+                            return course;
+                        });
+
+                        setCourses(updatedCourses);
+
+                        if (targetCourse) {
+                            try {
+                                const courseRef = doc(db, "users", userInfo.id, "courses", courseId);
+                                await setDoc(courseRef, targetCourse);
+                            } catch (e) {
+                                console.error("Failed to delete exam from Firestore", e);
+                                setCourses(previousCourses);
+                                Alert.alert("ข้อผิดพลาด", "ไม่สามารถลบข้อมูลได้");
+                            }
                         }
                     }
                 }
             ]
         );
     };
+
+    // Extract all exams flatly for the ExamTab
+    const allExams = courses.reduce((acc, course) => {
+        const courseExams = (course.exams || []).map(e => ({
+            ...e,
+            courseId: course.id,
+            subjectName: course.subjectName,
+            subjectCode: course.subjectCode
+        }));
+        return [...acc, ...courseExams];
+    }, []);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -174,7 +233,7 @@ export default function TimeTableScreen() {
                     />
                 ) : (
                     <ExamTab
-                        exams={exams}
+                        exams={allExams}
                         setExamModalVisible={setExamModalVisible}
                         onDeleteExam={handleDeleteExam}
                     />
@@ -194,7 +253,7 @@ export default function TimeTableScreen() {
                 onClose={() => setExamModalVisible(false)}
                 onAddExam={handleAddExam}
                 courses={courses}
-                exams={exams}
+                exams={allExams}
             />
         </SafeAreaView>
     );

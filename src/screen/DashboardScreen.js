@@ -4,74 +4,49 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookOpen, AlertCircle, Plus, Clock } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { AuthContext } from '../context/AuthContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db } from '../config/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { getNextClass, getUpcomingExams } from '../utils/dashboardHelpers';
 
-const getNextClass = (courses) => {
-    if (!courses || courses.length === 0) return null;
 
-    const dayMap = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
-    const now = new Date();
-    const currentDayIndex = now.getDay();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    let upcomingClasses = [];
-
-    courses.forEach(course => {
-        if (!course.startTime || !course.endTime) return;
-        const courseDate = new Date(course.startTime);
-        const startMinutes = courseDate.getHours() * 60 + courseDate.getMinutes();
-
-        const endDate = new Date(course.endTime);
-        const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
-
-        const courseDayIndex = dayMap.indexOf(course.day);
-
-        let daysAhead = (courseDayIndex - currentDayIndex + 7) % 7;
-
-        if (daysAhead === 0 && endMinutes <= currentMinutes) {
-            daysAhead = 7;
-        }
-
-        const exactTimeAheadMinutes = daysAhead * 24 * 60 + startMinutes - currentMinutes;
-
-        upcomingClasses.push({
-            ...course,
-            exactTimeAheadMinutes,
-        });
-    });
-
-    upcomingClasses.sort((a, b) => a.exactTimeAheadMinutes - b.exactTimeAheadMinutes);
-
-    return upcomingClasses[0] || null;
-};
 
 export default function DashboardScreen() {
     const { userInfo } = useContext(AuthContext);
     const [nextClass, setNextClass] = useState(null);
+    const [upcomingExams, setUpcomingExams] = useState([]);
     const isFocused = useIsFocused();
     const navigation = useNavigation();
 
-    const fetchNextClass = async () => {
-        if (!userInfo) return;
+    const fetchDashboardData = async () => {
+        if (!userInfo || !userInfo.id) return;
         try {
-            const key = `@courses_${userInfo.email}`;
-            const storedCourses = await AsyncStorage.getItem(key);
-            if (storedCourses) {
-                const courses = JSON.parse(storedCourses);
-                const next = getNextClass(courses);
+            const coursesRef = collection(db, "users", userInfo.id, "courses");
+            const snapshot = await getDocs(coursesRef);
+
+            let loadedCourses = [];
+            snapshot.forEach((doc) => {
+                loadedCourses.push({ id: doc.id, ...doc.data() });
+            });
+
+            if (loadedCourses.length > 0) {
+                const next = getNextClass(loadedCourses);
                 setNextClass(next);
+
+                const exams = getUpcomingExams(loadedCourses);
+                setUpcomingExams(exams);
             } else {
                 setNextClass(null);
+                setUpcomingExams([]);
             }
         } catch (error) {
-            console.error(error);
+            console.error("Failed to fetch dashboard data from Firestore", error);
         }
     };
 
     useEffect(() => {
         if (isFocused) {
-            fetchNextClass();
+            fetchDashboardData();
         }
     }, [isFocused, userInfo]);
 
@@ -80,7 +55,7 @@ export default function DashboardScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.appName}>StudeySync</Text>
+                    <Text style={styles.appName}>StudySync</Text>
                     <Text style={styles.greeting}>สวัสดี {userInfo?.name}</Text>
                 </View>
 
@@ -126,10 +101,32 @@ export default function DashboardScreen() {
                             <AlertCircle size={20} color={COLORS.danger} />
                             <Text style={styles.cardTitle}>Upcoming Exams <Text style={styles.subText}>(7 วัน)</Text></Text>
                         </View>
-                        <View style={styles.emptyState}>
-                            <AlertCircle size={48} color="#E0E0E0" />
-                            <Text style={styles.emptyStateText}>ไม่มีการสอบที่ใกล้จะถึง</Text>
-                        </View>
+                        {upcomingExams.length > 0 ? (
+                            <View style={styles.upcomingExamsList}>
+                                {upcomingExams.map((exam, index) => (
+                                    <View key={exam.id || index} style={[styles.examItem, index === upcomingExams.length - 1 && { borderBottomWidth: 0 }]}>
+                                        <View style={styles.examDateBadge}>
+                                            <Text style={styles.examDateText}>
+                                                {new Date(exam.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.examDetails}>
+                                            <Text style={styles.examSubject} numberOfLines={1}>
+                                                {exam.subjectCode} {exam.subjectName}
+                                            </Text>
+                                            <Text style={styles.examTimeRoom}>
+                                                {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(exam.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} | ห้อง: {exam.room}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <AlertCircle size={48} color="#E0E0E0" />
+                                <Text style={styles.emptyStateText}>ไม่มีการสอบที่ใกล้จะถึง</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Quick Add Button */}
@@ -266,11 +263,46 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLORS.textSecondary,
     },
+    upcomingExamsList: {
+        marginTop: 5,
+    },
+    examItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    examDateBadge: {
+        backgroundColor: COLORS.danger + '20', // Light red
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginRight: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 55,
+    },
+    examDateText: {
+        color: COLORS.danger,
+        fontSize: 14,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    examDetails: {
+        flex: 1,
+    },
+    examSubject: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.text,
+        marginBottom: 4,
+    },
+    examTimeRoom: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+    },
     actionButton: {
-        backgroundColor: '#3B82F6', // The blue from the image, but maybe we should use primary?
-        // User requested Chula Theme. I should use primary (Pink) for the main action button.
-        // However, the image shows Blue. "ด้วยสีธีมสีของมหาลัยจุฬา".
-        // I will use `COLORS.primary` (Pink) to follow the instruction strictly.
         backgroundColor: COLORS.primary,
         flexDirection: 'row',
         alignItems: 'center',

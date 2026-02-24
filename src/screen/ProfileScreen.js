@@ -1,8 +1,10 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, LogOut, Building2, GraduationCap, Trash2, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { User, LogOut, Building2, GraduationCap, Trash2 } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
+import { db } from '../config/firebase';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { COLORS } from '../constants/colors';
 import { AuthContext } from '../context/AuthContext';
 
@@ -21,7 +23,7 @@ const FACULTIES = [
 const YEARS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
 export default function ProfileScreen() {
-    const { userInfo, logout, updateProfile, deleteAccount } = useContext(AuthContext);
+    const { userInfo, logout, updateProfile } = useContext(AuthContext);
     const [name, setName] = useState('');
     const [faculty, setFaculty] = useState('วิศวกรรมศาสตร์');
     const [year, setYear] = useState('1');
@@ -46,18 +48,31 @@ export default function ProfileScreen() {
 
     const handleDelete = () => {
         Alert.alert(
-            'Delete Data',
-            'Are you sure you want to delete all your data and account? This action cannot be undone.',
+            'ล้างข้อมูลการเรียน',
+            'คุณแน่ใจหรือไม่ที่จะล้างข้อมูลวิชาเรียนและตารางสอบทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้',
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: 'ยกเลิก', style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: 'ล้างข้อมูล',
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await deleteAccount();
+                            if (userInfo && userInfo.id) {
+                                // Delete all documents in the 'courses' subcollection
+                                const coursesRef = collection(db, "users", userInfo.id, "courses");
+                                const snapshot = await getDocs(coursesRef);
+
+                                const deletePromises = [];
+                                snapshot.forEach((document) => {
+                                    deletePromises.push(deleteDoc(doc(db, "users", userInfo.id, "courses", document.id)));
+                                });
+
+                                await Promise.all(deletePromises);
+                                Alert.alert('สำเร็จ', 'ล้างข้อมูลการเรียนเรียบร้อยแล้ว');
+                            }
                         } catch (e) {
-                            Alert.alert('Error', 'Failed to delete account');
+                            console.error("Failed to delete courses", e);
+                            Alert.alert('ข้อผิดพลาด', 'ไม่สามารถล้างข้อมูลได้');
                         }
                     }
                 }

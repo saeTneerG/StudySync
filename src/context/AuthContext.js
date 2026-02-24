@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 
 export const AuthContext = createContext();
 
@@ -11,25 +13,21 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         setIsLoading(true);
         try {
-            // Simulate user "database" in AsyncStorage
-            const existingUsers = await AsyncStorage.getItem('users');
-            let users = [];
-            if (existingUsers) {
-                users = JSON.parse(existingUsers);
-            }
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 
-            const user = users.find(u => u.email === email && u.password === password);
+            // Get user info from Firestore
+            const docRef = doc(db, "users", user.uid);
+            const docSnap = await getDoc(docRef);
 
-            if (user) {
-                // Simulate generating token
-                const token = 'fake-jwt-token';
-                setUserToken(token);
-                setUserInfo(user);
-                await AsyncStorage.setItem('userToken', token);
-                await AsyncStorage.setItem('userInfo', JSON.stringify(user));
+            if (docSnap.exists()) {
+                const userData = { id: user.uid, ...docSnap.data() };
+                setUserInfo(userData);
             } else {
-                throw new Error('Invalid credentials');
+                console.log("No such document!");
             }
+
+            setUserToken(user.uid);
         } catch (e) {
             console.log(`Login error ${e}`);
             throw e;
@@ -41,37 +39,21 @@ export const AuthProvider = ({ children }) => {
     const register = async (name, email, password) => {
         setIsLoading(true);
         try {
-            const existingUsers = await AsyncStorage.getItem('users');
-            let users = [];
-            if (existingUsers) {
-                users = JSON.parse(existingUsers);
-            }
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 
-            const existingUser = users.find(u => u.email === email);
-            if (existingUser) {
-                throw new Error('User already exists');
-            }
-
-            // Create new user (Faculty/Year empty by default)
-            const newUser = {
-                id: Date.now(),
+            const newUserInfo = {
                 name,
                 email,
-                password,
                 faculty: '',
                 year: ''
             };
 
-            users.push(newUser);
-            await AsyncStorage.setItem('users', JSON.stringify(users));
+            // Save user info to Firestore
+            await setDoc(doc(db, "users", user.uid), newUserInfo);
 
-            // Auto login after register
-            const token = 'fake-jwt-token';
-            setUserToken(token);
-            setUserInfo(newUser);
-            await AsyncStorage.setItem('userToken', token);
-            await AsyncStorage.setItem('userInfo', JSON.stringify(newUser));
-
+            setUserInfo({ id: user.uid, ...newUserInfo });
+            setUserToken(user.uid);
         } catch (e) {
             console.log(`Register error ${e}`);
             throw e;
@@ -82,67 +64,46 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         setIsLoading(true);
-        setUserToken(null);
-        setUserInfo(null);
-        await AsyncStorage.removeItem('userToken');
-        await AsyncStorage.removeItem('userInfo');
-        setIsLoading(false);
-    };
-
-    const isLoggedIn = async () => {
         try {
-            setIsLoading(true);
-            let userToken = await AsyncStorage.getItem('userToken');
-            let userInfo = await AsyncStorage.getItem('userInfo');
-
-            if (userInfo) {
-                setUserInfo(JSON.parse(userInfo));
-            }
-            setUserToken(userToken);
-            setIsLoading(false);
+            await signOut(auth);
+            setUserToken(null);
+            setUserInfo(null);
         } catch (e) {
-            console.log(`isLogged in error ${e}`);
+            console.log(`Logout error ${e}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const updateProfile = async (updatedData) => {
+        if (!userInfo || !userInfo.id) return;
         try {
-            const newInfo = { ...userInfo, ...updatedData };
-            setUserInfo(newInfo);
-            await AsyncStorage.setItem('userInfo', JSON.stringify(newInfo));
+            const userRef = doc(db, "users", userInfo.id);
+            await updateDoc(userRef, updatedData);
 
-            // Also update in the main 'users' array
-            const existingUsers = await AsyncStorage.getItem('users');
-            let users = [];
-            if (existingUsers) {
-                users = JSON.parse(existingUsers);
-                const userIndex = users.findIndex(u => u.email === userInfo.email);
-                if (userIndex !== -1) {
-                    users[userIndex] = { ...users[userIndex], ...updatedData };
-                    await AsyncStorage.setItem('users', JSON.stringify(users));
-                }
-            }
+            setUserInfo({ ...userInfo, ...updatedData });
         } catch (e) {
             console.log(`Update profile error ${e}`);
             throw e;
         }
     };
 
-    // Clear all data (for "Delete Data" button)
+    // Note: Deleting user auth account requires recent authentication.
+    // We will just clear their profile data from Firestore for "ลบข้อมูล".
+    // Actually, "Delete Account" usually means delete the user. 
+    // In our case, the user asked to clear data in ProfileScreen (handleDelete).
+    // Let's implement deleteAccount to delete the user document and auth account.
     const deleteAccount = async () => {
         setIsLoading(true);
         try {
-            // Remove from users list
-            const existingUsers = await AsyncStorage.getItem('users');
-            let users = [];
-            if (existingUsers) {
-                users = JSON.parse(existingUsers);
-                users = users.filter(u => u.email !== userInfo.email);
-                await AsyncStorage.setItem('users', JSON.stringify(users));
+            if (auth.currentUser) {
+                // Delete user document
+                await deleteDoc(doc(db, "users", auth.currentUser.uid));
+                // Delete auth account
+                await auth.currentUser.delete();
             }
-
-            // Logout
-            await logout();
+            setUserToken(null);
+            setUserInfo(null);
         } catch (e) {
             console.log(`Delete account error ${e}`);
             throw e;
@@ -152,7 +113,22 @@ export const AuthProvider = ({ children }) => {
     }
 
     useEffect(() => {
-        isLoggedIn();
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                setUserToken(user.uid);
+                // Fetch info
+                const docRef = doc(db, "users", user.uid);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setUserInfo({ id: user.uid, ...docSnap.data() });
+                }
+            } else {
+                setUserToken(null);
+                setUserInfo(null);
+            }
+        });
+
+        return () => unsubscribe();
     }, []);
 
     return (

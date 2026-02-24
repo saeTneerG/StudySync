@@ -54,7 +54,7 @@ export default function ExamTab({ exams, setExamModalVisible, onDeleteExam }) {
                                     <Text style={styles.courseName}>{exam.subjectCode} {exam.subjectName}</Text>
                                     <Text style={styles.courseRoom}>ห้อง: {exam.room}</Text>
                                 </View>
-                                <TouchableOpacity style={styles.deleteButton} onPress={() => onDeleteExam(exam.id)}>
+                                <TouchableOpacity style={styles.deleteButton} onPress={() => onDeleteExam(exam.id, exam.courseId)}>
                                     <Trash2 size={20} color="#FF6B6B" />
                                 </TouchableOpacity>
                             </View>
