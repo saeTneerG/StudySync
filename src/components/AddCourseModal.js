@@ -11,13 +11,20 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
     const defaultEnd = new Date();
     defaultEnd.setHours(12, 0, 0, 0);
 
-    const [subjectName, setSubjectName] = useState('');
-    const [subjectCode, setSubjectCode] = useState('');
-    const [room, setRoom] = useState('');
-    const [day, setDay] = useState('จันทร์');
-    const [startTime, setStartTime] = useState(defaultStart);
-    const [endTime, setEndTime] = useState(defaultEnd);
+    const initialFormState = {
+        subjectName: '',
+        subjectCode: '',
+        room: '',
+        day: 'จันทร์',
+        startTime: defaultStart,
+        endTime: defaultEnd,
+    };
+    const [formData, setFormData] = useState(initialFormState);
     const [showTimePicker, setShowTimePicker] = useState(null);
+
+    const updateForm = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
 
     const formatTime = (date) => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -28,15 +35,12 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
     };
 
     const resetForm = () => {
-        setSubjectName('');
-        setSubjectCode('');
-        setRoom('');
-        setDay('จันทร์');
-        setStartTime(defaultStart);
-        setEndTime(defaultEnd);
+        setFormData(initialFormState);
     };
 
     const handleAdd = () => {
+        const { subjectName, subjectCode, room, day, startTime, endTime } = formData;
+
         if (!subjectName || !subjectCode || !room) {
             Alert.alert("ข้อผิดพลาด", "กรุณากรอกข้อมูลให้ครบถ้วน");
             return;
@@ -104,8 +108,8 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
                         <TextInput
                             style={styles.input}
                             placeholder="เช่น คณิตศาสตร์"
-                            value={subjectName}
-                            onChangeText={setSubjectName}
+                            value={formData.subjectName}
+                            onChangeText={(text) => updateForm('subjectName', text)}
                             placeholderTextColor="#A0A0A0"
                         />
 
@@ -113,8 +117,8 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
                         <TextInput
                             style={styles.input}
                             placeholder="เช่น MATH101"
-                            value={subjectCode}
-                            onChangeText={setSubjectCode}
+                            value={formData.subjectCode}
+                            onChangeText={(text) => updateForm('subjectCode', text)}
                             placeholderTextColor="#A0A0A0"
                         />
 
@@ -122,16 +126,16 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
                         <TextInput
                             style={styles.input}
                             placeholder="เช่น ห้อง 301"
-                            value={room}
-                            onChangeText={setRoom}
+                            value={formData.room}
+                            onChangeText={(text) => updateForm('room', text)}
                             placeholderTextColor="#A0A0A0"
                         />
 
                         <Text style={styles.inputLabel}>วัน</Text>
                         <View style={styles.pickerContainer}>
                             <Picker
-                                selectedValue={day}
-                                onValueChange={(itemValue) => setDay(itemValue)}
+                                selectedValue={formData.day}
+                                onValueChange={(itemValue) => updateForm('day', itemValue)}
                                 style={styles.picker}
                             >
                                 {dayOptions.map(d => (
@@ -144,14 +148,14 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
                             <View style={[styles.timeColumn, { marginRight: 10 }]}>
                                 <Text style={styles.inputLabel}>เวลาเริ่ม</Text>
                                 <TouchableOpacity style={styles.timePickerButton} onPress={() => setShowTimePicker('start')}>
-                                    <Text style={styles.timePickerText}>{formatTime(startTime)}</Text>
+                                    <Text style={styles.timePickerText}>{formatTime(formData.startTime)}</Text>
                                     <Clock size={20} color={COLORS.text} />
                                 </TouchableOpacity>
                             </View>
                             <View style={[styles.timeColumn, { marginLeft: 10 }]}>
                                 <Text style={styles.inputLabel}>เวลาจบ</Text>
                                 <TouchableOpacity style={styles.timePickerButton} onPress={() => setShowTimePicker('end')}>
-                                    <Text style={styles.timePickerText}>{formatTime(endTime)}</Text>
+                                    <Text style={styles.timePickerText}>{formatTime(formData.endTime)}</Text>
                                     <Clock size={20} color={COLORS.text} />
                                 </TouchableOpacity>
                             </View>
@@ -159,7 +163,7 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
 
                         {showTimePicker && (
                             <DateTimePicker
-                                value={showTimePicker === 'start' ? startTime : endTime}
+                                value={showTimePicker === 'start' ? formData.startTime : formData.endTime}
                                 mode="time"
                                 is24Hour={true}
                                 display="default"
@@ -168,9 +172,9 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
                                     setShowTimePicker(Platform.OS === 'ios' ? pickerType : null);
                                     if (selectedDate) {
                                         if (pickerType === 'start') {
-                                            setStartTime(selectedDate);
+                                            updateForm('startTime', selectedDate);
                                         } else {
-                                            setEndTime(selectedDate);
+                                            updateForm('endTime', selectedDate);
                                         }
                                     }
                                 }}

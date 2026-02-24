@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import { AuthContext } from '../context/AuthContext';
-import { User, Lock, BookOpen } from 'lucide-react-native';
+import { Mail, Lock, BookOpen } from 'lucide-react-native';
 
 export default function LoginScreen({ navigation }) {
     const { login } = useContext(AuthContext);
@@ -48,12 +48,12 @@ export default function LoginScreen({ navigation }) {
 
                             <View style={styles.inputWrapper}>
                                 <View style={styles.labelContainer}>
-                                    <User size={16} color={COLORS.textSecondary} />
-                                    <Text style={styles.label}>ชื่อผู้ใช้</Text>
+                                    <Mail size={16} color={COLORS.textSecondary} />
+                                    <Text style={styles.label}>อีเมล</Text>
                                 </View>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="กรอกชื่อผู้ใช้"
+                                    placeholder="กรอกอีเมล"
                                     placeholderTextColor="#ccc"
                                     value={email}
                                     onChangeText={setEmail}

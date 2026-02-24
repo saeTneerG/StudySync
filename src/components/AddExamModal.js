@@ -11,15 +11,22 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
     const defaultEnd = new Date();
     defaultEnd.setHours(12, 0, 0, 0);
 
-    const [subjectName, setSubjectName] = useState('');
-    const [subjectCode, setSubjectCode] = useState('');
-    const [room, setRoom] = useState('');
-    const [examDate, setExamDate] = useState(new Date());
-    const [startTime, setStartTime] = useState(defaultStart);
-    const [endTime, setEndTime] = useState(defaultEnd);
+    const initialFormState = {
+        subjectName: '',
+        subjectCode: '',
+        room: '',
+        examDate: new Date(),
+        startTime: defaultStart,
+        endTime: defaultEnd,
+        selectedCourseId: ''
+    };
+    const [formData, setFormData] = useState(initialFormState);
     const [showTimePicker, setShowTimePicker] = useState(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [selectedCourseId, setSelectedCourseId] = useState('');
+
+    const updateForm = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
 
     const formatTime = (date) => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -34,16 +41,17 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
     };
 
     const resetForm = () => {
-        setSubjectName('');
-        setSubjectCode('');
-        setRoom('');
-        setExamDate(new Date());
-        setStartTime(defaultStart);
-        setEndTime(defaultEnd);
-        setSelectedCourseId('');
+        setFormData(initialFormState);
     };
 
     const handleAdd = () => {
+        const { subjectName, subjectCode, room, examDate, startTime, endTime, selectedCourseId } = formData;
+
+        if (!selectedCourseId) {
+            Alert.alert("ข้อผิดพลาด", "กรุณาเลือกวิชาเรียนก่อน");
+            return;
+        }
+
         if (!subjectName || !subjectCode || !room) {
             Alert.alert("ข้อผิดพลาด", "กรุณากรอกข้อมูลให้ครบถ้วน");
             return;
@@ -74,6 +82,7 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
 
         const newExam = {
             id: Date.now().toString(),
+            courseId: selectedCourseId,
             subjectName,
             subjectCode,
             room,
@@ -113,20 +122,27 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
                                 <Text style={styles.inputLabel}>เลือกจากวิชาเรียนที่มีอยู่</Text>
                                 <View style={styles.pickerContainer}>
                                     <Picker
-                                        selectedValue={selectedCourseId}
+                                        selectedValue={formData.selectedCourseId}
                                         onValueChange={(itemValue) => {
-                                            setSelectedCourseId(itemValue);
                                             if (itemValue) {
                                                 const selectedCourse = courses.find(c => c.id === itemValue);
                                                 if (selectedCourse) {
-                                                    setSubjectName(selectedCourse.subjectName);
-                                                    setSubjectCode(selectedCourse.subjectCode);
-                                                    setRoom(selectedCourse.room);
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        selectedCourseId: itemValue,
+                                                        subjectName: selectedCourse.subjectName,
+                                                        subjectCode: selectedCourse.subjectCode,
+                                                        room: selectedCourse.room
+                                                    }));
                                                 }
                                             } else {
-                                                setSubjectName('');
-                                                setSubjectCode('');
-                                                setRoom('');
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    selectedCourseId: '',
+                                                    subjectName: '',
+                                                    subjectCode: '',
+                                                    room: ''
+                                                }));
                                             }
                                         }}
                                         style={styles.picker}
@@ -142,19 +158,19 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
 
                         <Text style={styles.inputLabel}>ชื่อวิชา</Text>
                         <TextInput
-                            style={styles.input}
-                            placeholder="เช่น คณิตศาสตร์"
-                            value={subjectName}
-                            onChangeText={setSubjectName}
+                            style={[styles.input, styles.disabledInput]}
+                            placeholder="เลือกวิชาด้านบน"
+                            value={formData.subjectName}
+                            editable={false}
                             placeholderTextColor="#A0A0A0"
                         />
 
                         <Text style={styles.inputLabel}>รหัสวิชา</Text>
                         <TextInput
-                            style={styles.input}
-                            placeholder="เช่น MATH101"
-                            value={subjectCode}
-                            onChangeText={setSubjectCode}
+                            style={[styles.input, styles.disabledInput]}
+                            placeholder="เลือกวิชาด้านบน"
+                            value={formData.subjectCode}
+                            editable={false}
                             placeholderTextColor="#A0A0A0"
                         />
 
@@ -162,25 +178,25 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
                         <TextInput
                             style={styles.input}
                             placeholder="เช่น ห้อง 301"
-                            value={room}
-                            onChangeText={setRoom}
+                            value={formData.room}
+                            onChangeText={(text) => updateForm('room', text)}
                             placeholderTextColor="#A0A0A0"
                         />
 
                         <Text style={styles.inputLabel}>วันที่สอบ</Text>
                         <TouchableOpacity style={styles.timePickerButton} onPress={() => setShowDatePicker(true)}>
-                            <Text style={styles.timePickerText}>{formatDate(examDate)}</Text>
+                            <Text style={styles.timePickerText}>{formatDate(formData.examDate)}</Text>
                             <Calendar size={20} color={COLORS.text} />
                         </TouchableOpacity>
 
                         {showDatePicker && (
                             <DateTimePicker
-                                value={examDate}
+                                value={formData.examDate}
                                 mode="date"
                                 display="default"
                                 onChange={(event, selectedDate) => {
                                     setShowDatePicker(Platform.OS === 'ios');
-                                    if (selectedDate) setExamDate(selectedDate);
+                                    if (selectedDate) updateForm('examDate', selectedDate);
                                 }}
                             />
                         )}
@@ -189,14 +205,14 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
                             <View style={[styles.timeColumn, { marginRight: 10 }]}>
                                 <Text style={styles.inputLabel}>เวลาเริ่ม</Text>
                                 <TouchableOpacity style={styles.timePickerButton} onPress={() => setShowTimePicker('examStart')}>
-                                    <Text style={styles.timePickerText}>{formatTime(startTime)}</Text>
+                                    <Text style={styles.timePickerText}>{formatTime(formData.startTime)}</Text>
                                     <Clock size={20} color={COLORS.text} />
                                 </TouchableOpacity>
                             </View>
                             <View style={[styles.timeColumn, { marginLeft: 10 }]}>
                                 <Text style={styles.inputLabel}>เวลาจบ</Text>
                                 <TouchableOpacity style={styles.timePickerButton} onPress={() => setShowTimePicker('examEnd')}>
-                                    <Text style={styles.timePickerText}>{formatTime(endTime)}</Text>
+                                    <Text style={styles.timePickerText}>{formatTime(formData.endTime)}</Text>
                                     <Clock size={20} color={COLORS.text} />
                                 </TouchableOpacity>
                             </View>
@@ -204,7 +220,7 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
 
                         {(showTimePicker === 'examStart' || showTimePicker === 'examEnd') && (
                             <DateTimePicker
-                                value={showTimePicker === 'examStart' ? startTime : endTime}
+                                value={showTimePicker === 'examStart' ? formData.startTime : formData.endTime}
                                 mode="time"
                                 is24Hour={true}
                                 display="default"
@@ -213,9 +229,9 @@ export default function AddExamModal({ visible, onClose, onAddExam, courses, exa
                                     setShowTimePicker(Platform.OS === 'ios' ? pickerType : null);
                                     if (selectedDate) {
                                         if (pickerType === 'examStart') {
-                                            setStartTime(selectedDate);
+                                            updateForm('startTime', selectedDate);
                                         } else {
-                                            setEndTime(selectedDate);
+                                            updateForm('endTime', selectedDate);
                                         }
                                     }
                                 }}
@@ -277,6 +293,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: COLORS.text,
         backgroundColor: COLORS.background,
+    },
+    disabledInput: {
+        backgroundColor: '#F0F0F0',
+        color: COLORS.textSecondary,
     },
     pickerContainer: {
         borderWidth: 1,
