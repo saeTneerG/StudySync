@@ -90,11 +90,11 @@ export default function ProfileScreen() {
                                     <Text style={styles.userName}>{userInfo?.name}</Text>
                                 </View>
 
-                                <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                                    <LogOut size={20} color={COLORS.white} style={{ marginRight: 10 }} />
-                                    <Text style={styles.logoutText}>ออกจากระบบ</Text>
-                                </TouchableOpacity>
                             </View>
+                            <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+                                <LogOut size={20} color={COLORS.white} style={{ marginRight: 10 }} />
+                                <Text style={styles.logoutText}>ออกจากระบบ</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 

@@ -27,13 +27,11 @@ function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {userToken == null ? (
-        // Auth Stack
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
         </>
       ) : (
-        // App Stack
         <Stack.Screen name="App" component={AppNavigator} />
       )}
     </Stack.Navigator>
