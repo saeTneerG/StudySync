@@ -1,36 +1,142 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, TextInput } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import { COLORS } from '../constants/colors';
+import { sharedStyles } from '../constants/sharedStyles';
+import { DataContext } from '../context/DataContext';
+import { Trash2, CheckCircle, Circle } from 'lucide-react-native';
+import ScreenHeader from '../components/ScreenHeader';
+import TabBar from '../components/TabBar';
+import AddActivityModal from '../components/AddActivityModal';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const TABS = [
+    { key: 'activity', label: 'กิจกรรม' },
+    { key: 'studyPlan', label: 'Study Plan' },
+];
 
 export default function PlanerScreen() {
-    const [activeTab, setActiveTab] = useState('activity'); // 'activity' or 'studyPlan'
+    const {
+        courses,
+        activities,
+        studyPlanItems,
+        addActivity,
+        deleteActivity,
+        addStudyPlanItem,
+        toggleStudyPlanItem,
+        deleteStudyPlanItem,
+    } = useContext(DataContext);
+
+    const [activeTab, setActiveTab] = useState('activity');
     const [studyPlanInput, setStudyPlanInput] = useState('');
+    const [modalVisible, setModalVisible] = useState(false);
 
-    const renderActivityContent = () => {
-        return (
-            <View>
-                {/* Main Action Button */}
-                <TouchableOpacity style={styles.addButton}>
-                    <Text style={styles.addButtonText}>+ เพิ่มกิจกรรม</Text>
-                </TouchableOpacity>
+    const handleAddActivity = async (newActivity) => {
+        try {
+            await addActivity(newActivity);
+            setModalVisible(false);
+        } catch (e) { /* handled in DataContext */ }
+    };
 
-                {/* Empty State Card */}
-                <View style={[styles.card, styles.emptyCard]}>
-                    <View style={styles.cardContent}>
-                        <Text style={styles.emptyText}>ไม่มีกิจกรรม</Text>
-                    </View>
-                </View>
-            </View>
+    const handleDeleteActivity = (id) => {
+        Alert.alert(
+            "ยืนยันการลบ",
+            "คุณต้องการลบกิจกรรมนี้ใช่หรือไม่?",
+            [
+                { text: "ยกเลิก", style: "cancel" },
+                { text: "ลบ", style: "destructive", onPress: () => deleteActivity(id) }
+            ]
         );
     };
 
+    const handleAddStudyPlanItem = async () => {
+        const text = studyPlanInput.trim();
+        if (!text) {
+            Alert.alert("ข้อผิดพลาด", "กรุณากรอกรายการที่ต้องการเพิ่ม");
+            return;
+        }
+
+        const newItem = {
+            id: Date.now().toString(),
+            text,
+            completed: false,
+            createdAt: Date.now(),
+        };
+
+        setStudyPlanInput('');
+        try {
+            await addStudyPlanItem(newItem);
+        } catch (e) { /* handled in DataContext */ }
+    };
+
+    const handleDeleteStudyPlanItem = (id) => {
+        Alert.alert(
+            "ยืนยันการลบ",
+            "คุณต้องการลบรายการนี้ใช่หรือไม่?",
+            [
+                { text: "ยกเลิก", style: "cancel" },
+                { text: "ลบ", style: "destructive", onPress: () => deleteStudyPlanItem(id) }
+            ]
+        );
+    };
+
+    const formatActivityDate = (dateStr) => {
+        return new Date(dateStr).toLocaleDateString('th-TH', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+    };
+
+    const formatActivityTime = (timeStr) => {
+        return new Date(timeStr).toLocaleTimeString([], {
+            hour: '2-digit', minute: '2-digit', hour12: false
+        }) + ' น.';
+    };
+
+    const renderActivityContent = () => (
+        <View>
+            <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+                <Text style={styles.addButtonText}>+ เพิ่มกิจกรรม</Text>
+            </TouchableOpacity>
+
+            {activities.length === 0 ? (
+                <View style={[styles.card, styles.emptyCard]}>
+                    <Text style={styles.emptyText}>ไม่มีกิจกรรม</Text>
+                </View>
+            ) : (
+                activities.map((activity) => (
+                    <View key={activity.id} style={[styles.card, styles.activityCard]}>
+                        <View style={styles.activityInfo}>
+                            <Text style={styles.activityTitle}>{activity.title}</Text>
+                            <Text style={styles.activityTime}>
+                                {formatActivityDate(activity.date)} • {formatActivityTime(activity.time)}
+                            </Text>
+                            {!!activity.description && (
+                                <Text style={styles.activityDesc}>{activity.description}</Text>
+                            )}
+                        </View>
+                        <TouchableOpacity onPress={() => handleDeleteActivity(activity.id)} style={styles.deleteBtn}>
+                            <Trash2 size={20} color="#FF6347" />
+                        </TouchableOpacity>
+                    </View>
+                ))
+            )}
+        </View>
+    );
+
     const renderStudyPlanContent = () => {
+        const completedCount = studyPlanItems.filter(i => i.completed).length;
+        const totalCount = studyPlanItems.length;
+
         return (
             <View style={styles.studyPlanContainer}>
                 <View style={styles.card}>
                     <Text style={styles.studyPlanTitle}>แผนการอ่านหนังสือ / Study Checklist</Text>
 
-                    {/* Input Row */}
+                    {totalCount > 0 && (
+                        <Text style={styles.progressText}>
+                            เสร็จแล้ว {completedCount}/{totalCount} รายการ
+                        </Text>
+                    )}
+
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
@@ -38,131 +144,77 @@ export default function PlanerScreen() {
                             placeholderTextColor="#ccc"
                             value={studyPlanInput}
                             onChangeText={setStudyPlanInput}
+                            onSubmitEditing={handleAddStudyPlanItem}
+                            returnKeyType="done"
                         />
-                        <TouchableOpacity style={styles.smallAddButton}>
+                        <TouchableOpacity style={styles.smallAddButton} onPress={handleAddStudyPlanItem}>
                             <Text style={styles.smallAddButtonText}>+ เพิ่ม</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* Empty List Area */}
-                    <View style={styles.emptyListContainer}>
-                        <Text style={styles.emptyText}>ไม่มีรายการ</Text>
-                    </View>
+                    {studyPlanItems.length === 0 ? (
+                        <View style={styles.emptyListContainer}>
+                            <Text style={styles.emptyText}>ไม่มีรายการ</Text>
+                        </View>
+                    ) : (
+                        studyPlanItems.map((item) => (
+                            <View key={item.id} style={[styles.checklistItem, item.completed && styles.checklistItemCompleted]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxArea}
+                                    onPress={() => toggleStudyPlanItem(item.id)}
+                                >
+                                    {item.completed ? (
+                                        <CheckCircle size={24} color={COLORS.success} />
+                                    ) : (
+                                        <Circle size={24} color={COLORS.border} />
+                                    )}
+                                    <Text style={[
+                                        styles.checklistText,
+                                        item.completed && styles.checklistTextCompleted
+                                    ]}>
+                                        {item.text}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => handleDeleteStudyPlanItem(item.id)}
+                                    style={styles.deleteBtn}
+                                >
+                                    <Trash2 size={18} color="#FF6347" />
+                                </TouchableOpacity>
+                            </View>
+                        ))
+                    )}
                 </View>
             </View>
         );
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header Section */}
-            <View style={styles.header}>
-                <Text style={styles.logoText}>StudySync</Text>
-                <Text style={styles.greetingText}>สวัสดี สมชาย ใจดี</Text>
+        <SafeAreaView style={sharedStyles.container}>
+            <ScreenHeader />
+
+            <View style={sharedStyles.subheader}>
+                <Text style={sharedStyles.sectionTitle}>Activity & Planner</Text>
+                <Text style={sharedStyles.sectionSubtitle}>จัดการกิจกรรมและแผนการเรียน</Text>
             </View>
 
-            {/* Subheader Section */}
-            <View style={styles.subheader}>
-                <Text style={styles.sectionTitle}>Activity & Planner</Text>
-                <Text style={styles.sectionSubtitle}>จัดการกิจกรรมและแผนการเรียน</Text>
-            </View>
+            <TabBar tabs={TABS} activeTab={activeTab} onTabPress={setActiveTab} />
 
-            {/* Tab Switcher */}
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'activity' && styles.activeTabButton]}
-                    onPress={() => setActiveTab('activity')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'activity' && styles.activeTabText]}>
-                        กิจกรรม
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'studyPlan' && styles.activeTabButton]}
-                    onPress={() => setActiveTab('studyPlan')}
-                >
-                    <Text style={[styles.tabText, activeTab === 'studyPlan' && styles.activeTabText]}>
-                        Study Plan
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Content Area */}
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
+            <ScrollView contentContainerStyle={sharedStyles.scrollContent} showsVerticalScrollIndicator={false}>
                 {activeTab === 'activity' ? renderActivityContent() : renderStudyPlanContent()}
             </ScrollView>
+
+            <AddActivityModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onAddActivity={handleAddActivity}
+                courses={courses}
+            />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
-    header: {
-        paddingHorizontal: 20,
-        paddingTop: 15,
-        paddingBottom: 15,
-        borderBottomWidth: 4,
-        borderBottomColor: COLORS.border,
-    },
-    logoText: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: COLORS.primary,
-    },
-    greetingText: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        marginTop: 2,
-    },
-    subheader: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 15,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: COLORS.text,
-    },
-    sectionSubtitle: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        marginTop: 4,
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        marginHorizontal: 20,
-        backgroundColor: COLORS.background,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        overflow: 'hidden',
-        marginBottom: 15,
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    activeTabButton: {
-        backgroundColor: COLORS.primary,
-    },
-    tabText: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        fontWeight: '500',
-    },
-    activeTabText: {
-        color: COLORS.white,
-        fontWeight: 'bold',
-    },
     addButton: {
         backgroundColor: COLORS.primary,
         borderRadius: 10,
@@ -175,11 +227,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    scrollContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        flexGrow: 1,
-    },
     card: {
         backgroundColor: COLORS.white,
         borderRadius: 12,
@@ -190,14 +237,9 @@ const styles = StyleSheet.create({
         ...COLORS.cardShadow,
     },
     emptyCard: {
-        height: 120, // To give it the rectangular shape shown in the design
+        height: 120,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    cardContent: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        flex: 1,
     },
     emptyText: {
         fontSize: 16,
@@ -215,7 +257,7 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 30, // Space before empty list
+        marginBottom: 30,
     },
     input: {
         flex: 1,
@@ -246,5 +288,66 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 20,
+    },
+    progressText: {
+        fontSize: 13,
+        color: COLORS.success,
+        marginBottom: 12,
+        fontWeight: '500',
+    },
+    checklistItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+    },
+    checklistItemCompleted: {
+        backgroundColor: '#F0FFF0',
+    },
+    checkboxArea: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    checklistText: {
+        fontSize: 15,
+        color: COLORS.text,
+        marginLeft: 12,
+        flex: 1,
+    },
+    checklistTextCompleted: {
+        textDecorationLine: 'line-through',
+        color: COLORS.textSecondary,
+    },
+    activityCard: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 15,
+    },
+    activityInfo: {
+        flex: 1,
+    },
+    activityTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: COLORS.text,
+        marginBottom: 4,
+    },
+    activityTime: {
+        fontSize: 14,
+        color: COLORS.primary,
+        fontWeight: '500',
+        marginBottom: 4,
+    },
+    activityDesc: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+    },
+    deleteBtn: {
+        padding: 8,
     }
 });

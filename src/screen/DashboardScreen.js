@@ -1,71 +1,30 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookOpen, AlertCircle, Plus, Clock } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
-import { AuthContext } from '../context/AuthContext';
-import { db } from '../config/firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { sharedStyles } from '../constants/sharedStyles';
+import { DataContext } from '../context/DataContext';
+import { useNavigation } from '@react-navigation/native';
 import { getNextClass, getUpcomingExams } from '../utils/dashboardHelpers';
-
-
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function DashboardScreen() {
-    const { userInfo } = useContext(AuthContext);
-    const [nextClass, setNextClass] = useState(null);
-    const [upcomingExams, setUpcomingExams] = useState([]);
-    const isFocused = useIsFocused();
+    const { courses } = useContext(DataContext);
     const navigation = useNavigation();
 
-    const fetchDashboardData = async () => {
-        if (!userInfo || !userInfo.id) return;
-        try {
-            const coursesRef = collection(db, "users", userInfo.id, "courses");
-            const snapshot = await getDocs(coursesRef);
-
-            let loadedCourses = [];
-            snapshot.forEach((doc) => {
-                loadedCourses.push({ id: doc.id, ...doc.data() });
-            });
-
-            if (loadedCourses.length > 0) {
-                const next = getNextClass(loadedCourses);
-                setNextClass(next);
-
-                const exams = getUpcomingExams(loadedCourses);
-                setUpcomingExams(exams);
-            } else {
-                setNextClass(null);
-                setUpcomingExams([]);
-            }
-        } catch (error) {
-            console.error("Failed to fetch dashboard data from Firestore", error);
-        }
-    };
-
-    useEffect(() => {
-        if (isFocused) {
-            fetchDashboardData();
-        }
-    }, [isFocused, userInfo]);
+    const nextClass = useMemo(() => getNextClass(courses), [courses]);
+    const upcomingExams = useMemo(() => getUpcomingExams(courses), [courses]);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={sharedStyles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.appName}>StudySync</Text>
-                    <Text style={styles.greeting}>สวัสดี {userInfo?.name}</Text>
-                </View>
-
-                <View style={styles.divider} />
+                <ScreenHeader />
 
                 <View style={styles.contentContainer}>
-                    <Text style={styles.sectionTitle}>Dashboard</Text>
+                    <Text style={sharedStyles.sectionTitle}>Dashboard</Text>
                     <Text style={styles.sectionSubtitle}>ภาพรวมกิจกรรมของคุณ</Text>
 
-                    {/* Next Class Card */}
                     <View style={[styles.card, styles.shadow]}>
                         <View style={styles.cardHeader}>
                             <Clock size={20} color={COLORS.primary} />
@@ -95,7 +54,6 @@ export default function DashboardScreen() {
                         )}
                     </View>
 
-                    {/* Upcoming Exams Card */}
                     <View style={[styles.card, styles.shadow]}>
                         <View style={styles.cardHeader}>
                             <AlertCircle size={20} color={COLORS.danger} />
@@ -128,12 +86,6 @@ export default function DashboardScreen() {
                             </View>
                         )}
                     </View>
-
-                    {/* Quick Add Button */}
-                    <TouchableOpacity style={[styles.actionButton, styles.shadow]}>
-                        <Plus color={COLORS.white} size={24} />
-                        <Text style={styles.actionButtonText}>Quick Add Activity / Task</Text>
-                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -141,44 +93,17 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
     scrollContent: {
         paddingBottom: 20,
     },
-    header: {
-        padding: 20,
-        backgroundColor: COLORS.white,
-    },
-    appName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: COLORS.primary, // Chula Pink
-        marginBottom: 4,
-    },
-    greeting: {
-        fontSize: 16,
-        color: COLORS.textSecondary,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: COLORS.border,
-    },
     contentContainer: {
         padding: 20,
-    },
-    sectionTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: COLORS.text,
-        marginBottom: 4,
     },
     sectionSubtitle: {
         fontSize: 16,
         color: COLORS.textSecondary,
         marginBottom: 20,
+        marginTop: 4,
     },
     card: {
         backgroundColor: COLORS.white,
@@ -189,11 +114,7 @@ const styles = StyleSheet.create({
         borderColor: COLORS.border,
     },
     shadow: {
-        shadowColor: COLORS.cardShadow.shadowColor,
-        shadowOffset: COLORS.cardShadow.shadowOffset,
-        shadowOpacity: COLORS.cardShadow.shadowOpacity,
-        shadowRadius: COLORS.cardShadow.shadowRadius,
-        elevation: COLORS.cardShadow.elevation,
+        ...COLORS.cardShadow,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -224,12 +145,10 @@ const styles = StyleSheet.create({
     linkText: {
         marginTop: 5,
         fontSize: 14,
-        color: COLORS.primary, // Chula Pink
-        textDecorationLine: 'none',
+        color: COLORS.primary,
     },
     nextClassWrapper: {
-        paddingTop: 5,
-        paddingBottom: 5,
+        paddingVertical: 5,
     },
     nextClassTimeRow: {
         flexDirection: 'row',
@@ -237,7 +156,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     nextClassDayBadge: {
-        backgroundColor: COLORS.primary + '20', // transparent primary
+        backgroundColor: COLORS.primary + '20',
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 12,
@@ -274,7 +193,7 @@ const styles = StyleSheet.create({
         borderBottomColor: COLORS.border,
     },
     examDateBadge: {
-        backgroundColor: COLORS.danger + '20', // Light red
+        backgroundColor: COLORS.danger + '20',
         paddingHorizontal: 10,
         paddingVertical: 8,
         borderRadius: 8,

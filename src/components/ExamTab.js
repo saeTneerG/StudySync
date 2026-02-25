@@ -67,7 +67,6 @@ export default function ExamTab({ exams, setExamModalVisible, onDeleteExam }) {
 
     return (
         <View style={styles.container}>
-            {/* Main Action Button */}
             <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => setExamModalVisible(true)}

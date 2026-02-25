@@ -61,7 +61,6 @@ export default function ScheduleTab({ courses, dayOptions, setModalVisible, onDe
 
     return (
         <View style={styles.container}>
-            {/* Main Action Button */}
             <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => setModalVisible(true)}

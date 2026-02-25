@@ -56,9 +56,7 @@ export const getUpcomingExams = (courses) => {
     });
 
     const now = new Date();
-    // Start of today
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    // End of 7th day 
     const endOf7Days = startOfToday + (7 * 24 * 60 * 60 * 1000) + (24 * 60 * 60 * 1000 - 1);
 
     const upcomingExams = allExams.filter(exam => {
