@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Get user info from Firestore
             const docRef = doc(db, "users", user.uid);
             const docSnap = await getDoc(docRef);
 
@@ -49,7 +48,6 @@ export const AuthProvider = ({ children }) => {
                 year: ''
             };
 
-            // Save user info to Firestore
             await setDoc(doc(db, "users", user.uid), newUserInfo);
 
             setUserInfo({ id: user.uid, ...newUserInfo });
@@ -88,18 +86,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Note: Deleting user auth account requires recent authentication.
-    // We will just clear their profile data from Firestore for "ลบข้อมูล".
-    // Actually, "Delete Account" usually means delete the user. 
-    // In our case, the user asked to clear data in ProfileScreen (handleDelete).
-    // Let's implement deleteAccount to delete the user document and auth account.
     const deleteAccount = async () => {
         setIsLoading(true);
         try {
             if (auth.currentUser) {
-                // Delete user document
                 await deleteDoc(doc(db, "users", auth.currentUser.uid));
-                // Delete auth account
                 await auth.currentUser.delete();
             }
             setUserToken(null);
@@ -116,7 +107,6 @@ export const AuthProvider = ({ children }) => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setUserToken(user.uid);
-                // Fetch info
                 const docRef = doc(db, "users", user.uid);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {

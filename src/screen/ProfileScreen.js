@@ -1,12 +1,13 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, LogOut, Building2, GraduationCap, Trash2 } from 'lucide-react-native';
+import { User, LogOut, Building2, GraduationCap, Trash2, Edit3 } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
-import { db } from '../config/firebase';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { COLORS } from '../constants/colors';
+import { sharedStyles } from '../constants/sharedStyles';
 import { AuthContext } from '../context/AuthContext';
+import { DataContext } from '../context/DataContext';
+import ScreenHeader from '../components/ScreenHeader';
 
 const FACULTIES = [
     'ศิลปศาสตร์และวิทยาศาสตร์',
@@ -24,11 +25,12 @@ const YEARS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
 export default function ProfileScreen() {
     const { userInfo, logout, updateProfile } = useContext(AuthContext);
+    const { clearAllCourses } = useContext(DataContext);
     const [name, setName] = useState('');
     const [faculty, setFaculty] = useState('วิศวกรรมศาสตร์');
     const [year, setYear] = useState('1');
+    const [isEditing, setIsEditing] = useState(false);
 
-    // Initialize state with user info
     useEffect(() => {
         if (userInfo) {
             setName(userInfo.name || '');
@@ -40,10 +42,20 @@ export default function ProfileScreen() {
     const handleSave = async () => {
         try {
             await updateProfile({ name, faculty, year });
-            Alert.alert('Success', 'Profile updated successfully');
+            setIsEditing(false);
+            Alert.alert('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อยแล้ว');
         } catch (e) {
-            Alert.alert('Error', 'Failed to update profile');
+            Alert.alert('ข้อผิดพลาด', 'ไม่สามารถอัปเดตข้อมูลได้');
         }
+    };
+
+    const handleCancelEdit = () => {
+        if (userInfo) {
+            setName(userInfo.name || '');
+            setFaculty(userInfo.faculty || 'วิศวกรรมศาสตร์');
+            setYear(userInfo.year || '1');
+        }
+        setIsEditing(false);
     };
 
     const handleDelete = () => {
@@ -55,38 +67,15 @@ export default function ProfileScreen() {
                 {
                     text: 'ล้างข้อมูล',
                     style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            if (userInfo && userInfo.id) {
-                                // Delete all documents in the 'courses' subcollection
-                                const coursesRef = collection(db, "users", userInfo.id, "courses");
-                                const snapshot = await getDocs(coursesRef);
-
-                                const deletePromises = [];
-                                snapshot.forEach((document) => {
-                                    deletePromises.push(deleteDoc(doc(db, "users", userInfo.id, "courses", document.id)));
-                                });
-
-                                await Promise.all(deletePromises);
-                                Alert.alert('สำเร็จ', 'ล้างข้อมูลการเรียนเรียบร้อยแล้ว');
-                            }
-                        } catch (e) {
-                            console.error("Failed to delete courses", e);
-                            Alert.alert('ข้อผิดพลาด', 'ไม่สามารถล้างข้อมูลได้');
-                        }
-                    }
+                    onPress: () => clearAllCourses(),
                 }
             ]
         );
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.appName}>StudySync</Text>
-                <Text style={styles.greeting}>สวัสดี {name}</Text>
-            </View>
-            <View style={styles.divider} />
+        <SafeAreaView style={sharedStyles.container}>
+            <ScreenHeader name={name} />
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.contentContainer}>
@@ -114,7 +103,15 @@ export default function ProfileScreen() {
                     </View>
 
                     <View style={styles.sectionContainer}>
-                        <Text style={styles.sectionHeader}>ข้อมูลผู้เรียน</Text>
+                        <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionHeader}>ข้อมูลผู้เรียน</Text>
+                            {!isEditing && (
+                                <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
+                                    <Edit3 size={16} color={COLORS.white} style={{ marginRight: 6 }} />
+                                    <Text style={styles.editButtonText}>แก้ไขข้อมูล</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                         <View style={[styles.card, styles.shadow]}>
 
                             <View style={styles.inputGroup}>
@@ -123,10 +120,11 @@ export default function ProfileScreen() {
                                     <Text style={styles.inputLabel}>ชื่อ-นามสกุล</Text>
                                 </View>
                                 <TextInput
-                                    style={styles.input}
+                                    style={[styles.input, !isEditing && styles.inputDisabled]}
                                     value={name}
                                     onChangeText={setName}
                                     placeholder="เช่น สมชาย ใจดี"
+                                    editable={isEditing}
                                 />
                             </View>
 
@@ -135,12 +133,13 @@ export default function ProfileScreen() {
                                     <Building2 size={18} color={COLORS.textSecondary} />
                                     <Text style={styles.inputLabel}>คณะ/สาขา</Text>
                                 </View>
-                                <View style={styles.pickerContainer}>
+                                <View style={[styles.pickerContainer, !isEditing && styles.pickerDisabled]}>
                                     <Picker
                                         selectedValue={faculty}
                                         onValueChange={(itemValue) => setFaculty(itemValue)}
                                         style={styles.picker}
                                         dropdownIconColor={COLORS.textSecondary}
+                                        enabled={isEditing}
                                     >
                                         {FACULTIES.map((item, index) => (
                                             <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
@@ -154,12 +153,13 @@ export default function ProfileScreen() {
                                     <GraduationCap size={18} color={COLORS.textSecondary} />
                                     <Text style={styles.inputLabel}>ชั้นปี</Text>
                                 </View>
-                                <View style={styles.pickerContainer}>
+                                <View style={[styles.pickerContainer, !isEditing && styles.pickerDisabled]}>
                                     <Picker
                                         selectedValue={year}
                                         onValueChange={(itemValue) => setYear(itemValue)}
                                         style={styles.picker}
                                         dropdownIconColor={COLORS.textSecondary}
+                                        enabled={isEditing}
                                     >
                                         <Picker.Item label="เลือกชั้นปี" value="" color={COLORS.textSecondary} style={{ fontSize: 16 }} enabled={false} />
                                         {YEARS.map((item, index) => (
@@ -169,20 +169,16 @@ export default function ProfileScreen() {
                                 </View>
                             </View>
 
-                            <View style={styles.actionButtonsContainer}>
-                                <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
-                                    <Text style={styles.saveButtonText}>บันทึก</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => {
-                                    if (userInfo) {
-                                        setName(userInfo.name || '');
-                                        setFaculty(userInfo.faculty || 'วิศวกรรมศาสตร์');
-                                        setYear(userInfo.year || '1');
-                                    }
-                                }}>
-                                    <Text style={styles.cancelButtonText}>ยกเลิก</Text>
-                                </TouchableOpacity>
-                            </View>
+                            {isEditing && (
+                                <View style={styles.actionButtonsContainer}>
+                                    <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
+                                        <Text style={styles.saveButtonText}>บันทึก</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancelEdit}>
+                                        <Text style={styles.cancelButtonText}>ยกเลิก</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
 
                         </View>
                     </View>
@@ -198,28 +194,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
-    header: {
-        padding: 20,
-        backgroundColor: COLORS.white,
-        paddingBottom: 10,
-    },
-    appName: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: COLORS.primary,
-    },
-    greeting: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: COLORS.border,
-    },
     scrollContent: {
         paddingBottom: 20,
     },
@@ -240,11 +214,29 @@ const styles = StyleSheet.create({
     sectionContainer: {
         marginBottom: 25,
     },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
     sectionHeader: {
         fontSize: 18,
         fontWeight: '600',
         color: COLORS.text,
-        marginBottom: 10,
+    },
+    editButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.primary,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+    },
+    editButtonText: {
+        color: COLORS.white,
+        fontSize: 14,
+        fontWeight: '600',
     },
     card: {
         backgroundColor: COLORS.white,
@@ -263,9 +255,7 @@ const styles = StyleSheet.create({
     userInfoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E3F2FD', // Blue tint from original design, maybe adjust to pink tint?
-        // Let's use Secondary (Light Pink) #F8D7DA
-        backgroundColor: 'rgba(222, 86, 118, 0.1)', // Primary with opacity
+        backgroundColor: 'rgba(222, 86, 118, 0.1)',
         padding: 15,
         borderRadius: 8,
         marginBottom: 15,
@@ -292,7 +282,7 @@ const styles = StyleSheet.create({
         color: COLORS.text,
     },
     logoutButton: {
-        backgroundColor: '#4A4A4A', // Dark Grey
+        backgroundColor: '#4A4A4A',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -325,6 +315,14 @@ const styles = StyleSheet.create({
         padding: 12,
         fontSize: 16,
         color: COLORS.text,
+    },
+    inputDisabled: {
+        backgroundColor: '#F5F5F5',
+        color: COLORS.textSecondary,
+    },
+    pickerDisabled: {
+        backgroundColor: '#F5F5F5',
+        opacity: 0.7,
     },
     dropdown: {
         borderWidth: 1,
@@ -405,7 +403,7 @@ const styles = StyleSheet.create({
         borderColor: COLORS.border,
         borderRadius: 8,
         backgroundColor: COLORS.white,
-        overflow: 'hidden', // Ensures the picker stays within rounded corners
+        overflow: 'hidden',
     },
     picker: {
         width: '100%',

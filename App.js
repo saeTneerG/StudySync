@@ -9,6 +9,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screen/LoginScreen';
 import RegisterScreen from './src/screen/RegisterScreen';
 import { AuthProvider, AuthContext } from './src/context/AuthContext';
+import { DataProvider } from './src/context/DataContext';
 import { COLORS } from './src/constants/colors';
 
 const Stack = createNativeStackNavigator();
@@ -42,11 +43,14 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <RootNavigator />
-          <StatusBar style="auto" />
-        </NavigationContainer>
+        <DataProvider>
+          <NavigationContainer>
+            <RootNavigator />
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        </DataProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
 }
+

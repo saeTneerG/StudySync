@@ -1,8 +1,9 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
+import { authStyles } from '../constants/authStyles';
 import { AuthContext } from '../context/AuthContext';
 import { Mail, Lock, BookOpen } from 'lucide-react-native';
 
@@ -25,49 +26,47 @@ export default function LoginScreen({ navigation }) {
     };
 
     return (
-        <LinearGradient
-            colors={['#ffa6c9', '#f94f8a']}
-            style={styles.container}
-        >
-            <SafeAreaView style={styles.safeArea}>
+        <LinearGradient colors={['#ffa6c9', '#f94f8a']} style={authStyles.container}>
+            <SafeAreaView style={authStyles.safeArea}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.keyboardView}
+                    style={authStyles.keyboardView}
                 >
-                    <View style={styles.content}>
-                        <View style={styles.header}>
-                            <View style={styles.logoContainer}>
+                    <View style={authStyles.content}>
+                        <View style={authStyles.header}>
+                            <View style={authStyles.logoContainer}>
                                 <BookOpen size={40} color={COLORS.primary} />
                             </View>
-                            <Text style={styles.appName}>StudySync</Text>
-                            <Text style={styles.appSubtitle}>Academic Life Planner</Text>
+                            <Text style={authStyles.appName}>StudySync</Text>
+                            <Text style={authStyles.appSubtitle}>Academic Life Planner</Text>
                         </View>
 
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>เข้าสู่ระบบ</Text>
+                        <View style={authStyles.card}>
+                            <Text style={authStyles.cardTitle}>เข้าสู่ระบบ</Text>
 
-                            <View style={styles.inputWrapper}>
-                                <View style={styles.labelContainer}>
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
                                     <Mail size={16} color={COLORS.textSecondary} />
-                                    <Text style={styles.label}>อีเมล</Text>
+                                    <Text style={authStyles.label}>อีเมล</Text>
                                 </View>
                                 <TextInput
-                                    style={styles.input}
+                                    style={authStyles.input}
                                     placeholder="กรอกอีเมล"
                                     placeholderTextColor="#ccc"
+                                    keyboardType="email-address"
                                     value={email}
                                     onChangeText={setEmail}
                                     autoCapitalize="none"
                                 />
                             </View>
 
-                            <View style={styles.inputWrapper}>
-                                <View style={styles.labelContainer}>
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
                                     <Lock size={16} color={COLORS.textSecondary} />
-                                    <Text style={styles.label}>รหัสผ่าน</Text>
+                                    <Text style={authStyles.label}>รหัสผ่าน</Text>
                                 </View>
                                 <TextInput
-                                    style={styles.input}
+                                    style={authStyles.input}
                                     placeholder="กรอกรหัสผ่าน"
                                     placeholderTextColor="#ccc"
                                     value={password}
@@ -76,14 +75,14 @@ export default function LoginScreen({ navigation }) {
                                 />
                             </View>
 
-                            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                                <Text style={styles.loginButtonText}>เข้าสู่ระบบ</Text>
+                            <TouchableOpacity style={authStyles.primaryButton} onPress={handleLogin}>
+                                <Text style={authStyles.primaryButtonText}>เข้าสู่ระบบ</Text>
                             </TouchableOpacity>
 
-                            <View style={styles.registerContainer}>
-                                <Text style={styles.registerText}>ยังไม่มีบัญชี? </Text>
+                            <View style={authStyles.switchContainer}>
+                                <Text style={authStyles.switchText}>ยังไม่มีบัญชี? </Text>
                                 <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                                    <Text style={styles.registerLink}>สมัครสมาชิก</Text>
+                                    <Text style={authStyles.switchLink}>สมัครสมาชิก</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -93,110 +92,3 @@ export default function LoginScreen({ navigation }) {
         </LinearGradient>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    keyboardView: {
-        flex: 1,
-    },
-    content: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 24,
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 30,
-    },
-    logoContainer: {
-        width: 80,
-        height: 80,
-        backgroundColor: COLORS.white,
-        borderRadius: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 15,
-        ...COLORS.cardShadow,
-    },
-    appName: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: COLORS.white,
-        marginBottom: 5,
-    },
-    appSubtitle: {
-        fontSize: 16,
-        color: COLORS.white,
-        opacity: 0.9,
-    },
-    card: {
-        backgroundColor: COLORS.white,
-        borderRadius: 20,
-        padding: 25,
-        ...COLORS.cardShadow,
-        elevation: 5,
-    },
-    cardTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: COLORS.text,
-        textAlign: 'center',
-        marginBottom: 25,
-    },
-    inputWrapper: {
-        marginBottom: 20,
-    },
-    labelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    label: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        marginLeft: 8,
-        fontWeight: '500',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        height: 50,
-        fontSize: 16,
-        color: COLORS.text,
-        backgroundColor: COLORS.inputBackground,
-    },
-    loginButton: {
-        backgroundColor: COLORS.primary,
-        borderRadius: 12,
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    loginButtonText: {
-        color: COLORS.white,
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    registerContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 25,
-    },
-    registerText: {
-        color: COLORS.textSecondary,
-        fontSize: 14,
-    },
-    registerLink: {
-        color: COLORS.primary,
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-});

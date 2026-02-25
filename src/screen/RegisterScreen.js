@@ -1,8 +1,9 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
+import { authStyles } from '../constants/authStyles';
 import { AuthContext } from '../context/AuthContext';
 import { UserPlus, Lock, BookOpen, Mail } from 'lucide-react-native';
 
@@ -32,34 +33,31 @@ export default function RegisterScreen({ navigation }) {
     };
 
     return (
-        <LinearGradient
-            colors={['#ffa6c9', '#f94f8a']}
-            style={styles.container}
-        >
-            <SafeAreaView style={styles.safeArea}>
+        <LinearGradient colors={['#ffa6c9', '#f94f8a']} style={authStyles.container}>
+            <SafeAreaView style={authStyles.safeArea}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.keyboardView}
+                    style={authStyles.keyboardView}
                 >
-                    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                        <View style={styles.header}>
-                            <View style={styles.logoContainer}>
+                    <ScrollView contentContainerStyle={authStyles.scrollContent} showsVerticalScrollIndicator={false}>
+                        <View style={authStyles.header}>
+                            <View style={authStyles.logoContainer}>
                                 <BookOpen size={40} color={COLORS.primary} />
                             </View>
-                            <Text style={styles.appName}>StudySync</Text>
-                            <Text style={styles.appSubtitle}>Academic Life Planner</Text>
+                            <Text style={authStyles.appName}>StudySync</Text>
+                            <Text style={authStyles.appSubtitle}>Academic Life Planner</Text>
                         </View>
 
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>สมัครสมาชิก</Text>
+                        <View style={authStyles.card}>
+                            <Text style={authStyles.cardTitle}>สมัครสมาชิก</Text>
 
-                            <View style={styles.inputWrapper}>
-                                <View style={styles.labelContainer}>
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
                                     <UserPlus size={16} color={COLORS.textSecondary} />
-                                    <Text style={styles.label}>ชื่อ-นามสกุล</Text>
+                                    <Text style={authStyles.label}>ชื่อ-นามสกุล</Text>
                                 </View>
                                 <TextInput
-                                    style={styles.input}
+                                    style={authStyles.input}
                                     placeholder="เช่น สมชาย ใจดี"
                                     placeholderTextColor="#ccc"
                                     value={name}
@@ -67,28 +65,29 @@ export default function RegisterScreen({ navigation }) {
                                 />
                             </View>
 
-                            <View style={styles.inputWrapper}>
-                                <View style={styles.labelContainer}>
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
                                     <Mail size={16} color={COLORS.textSecondary} />
-                                    <Text style={styles.label}>อีเมล</Text>
+                                    <Text style={authStyles.label}>อีเมล</Text>
                                 </View>
                                 <TextInput
-                                    style={styles.input}
+                                    style={authStyles.input}
                                     placeholder="กรอกอีเมล"
                                     placeholderTextColor="#ccc"
+                                    keyboardType="email-address"
                                     value={email}
                                     onChangeText={setEmail}
                                     autoCapitalize="none"
                                 />
                             </View>
 
-                            <View style={styles.inputWrapper}>
-                                <View style={styles.labelContainer}>
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
                                     <Lock size={16} color={COLORS.textSecondary} />
-                                    <Text style={styles.label}>รหัสผ่าน</Text>
+                                    <Text style={authStyles.label}>รหัสผ่าน</Text>
                                 </View>
                                 <TextInput
-                                    style={styles.input}
+                                    style={authStyles.input}
                                     placeholder="อย่างน้อย 6 ตัวอักษร"
                                     placeholderTextColor="#ccc"
                                     value={password}
@@ -97,13 +96,13 @@ export default function RegisterScreen({ navigation }) {
                                 />
                             </View>
 
-                            <View style={styles.inputWrapper}>
-                                <View style={styles.labelContainer}>
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
                                     <Lock size={16} color={COLORS.textSecondary} />
-                                    <Text style={styles.label}>ยืนยันรหัสผ่าน</Text>
+                                    <Text style={authStyles.label}>ยืนยันรหัสผ่าน</Text>
                                 </View>
                                 <TextInput
-                                    style={styles.input}
+                                    style={authStyles.input}
                                     placeholder="กรอกรหัสผ่านอีกครั้ง"
                                     placeholderTextColor="#ccc"
                                     value={confirmPassword}
@@ -112,14 +111,14 @@ export default function RegisterScreen({ navigation }) {
                                 />
                             </View>
 
-                            <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-                                <Text style={styles.registerButtonText}>สมัครสมาชิก</Text>
+                            <TouchableOpacity style={authStyles.primaryButton} onPress={handleRegister}>
+                                <Text style={authStyles.primaryButtonText}>สมัครสมาชิก</Text>
                             </TouchableOpacity>
 
-                            <View style={styles.loginContainer}>
-                                <Text style={styles.loginText}>มีบัญชีอยู่แล้ว? </Text>
+                            <View style={authStyles.switchContainer}>
+                                <Text style={authStyles.switchText}>มีบัญชีอยู่แล้ว? </Text>
                                 <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                                    <Text style={styles.loginLink}>เข้าสู่ระบบ</Text>
+                                    <Text style={authStyles.switchLink}>เข้าสู่ระบบ</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -129,112 +128,3 @@ export default function RegisterScreen({ navigation }) {
         </LinearGradient>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    safeArea: {
-        flex: 1,
-    },
-    keyboardView: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: 24,
-        justifyContent: 'center',
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 20,
-        marginTop: 10,
-    },
-    logoContainer: {
-        width: 80,
-        height: 80,
-        backgroundColor: COLORS.white,
-        borderRadius: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10,
-        ...COLORS.cardShadow,
-    },
-    appName: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: COLORS.white,
-        marginBottom: 5,
-    },
-    appSubtitle: {
-        fontSize: 16,
-        color: COLORS.white,
-        opacity: 0.9,
-    },
-    card: {
-        backgroundColor: COLORS.white,
-        borderRadius: 20,
-        padding: 25,
-        ...COLORS.cardShadow,
-        elevation: 5,
-    },
-    cardTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: COLORS.text,
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    inputWrapper: {
-        marginBottom: 15,
-    },
-    labelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    label: {
-        fontSize: 14,
-        color: COLORS.textSecondary,
-        marginLeft: 8,
-        fontWeight: '500',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        height: 50,
-        fontSize: 14,
-        color: COLORS.text,
-        backgroundColor: COLORS.inputBackground,
-    },
-    registerButton: {
-        backgroundColor: COLORS.primary,
-        borderRadius: 12,
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    registerButtonText: {
-        color: COLORS.white,
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    loginContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 20,
-        marginBottom: 5,
-    },
-    loginText: {
-        color: COLORS.textSecondary,
-        fontSize: 14,
-    },
-    loginLink: {
-        color: COLORS.primary,
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-});
