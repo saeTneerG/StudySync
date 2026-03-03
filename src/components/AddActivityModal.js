@@ -8,10 +8,14 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
     const defaultTime = new Date();
     defaultTime.setHours(9, 0, 0, 0);
 
+    const defaultEndTime = new Date();
+    defaultEndTime.setHours(10, 0, 0, 0);
+
     const initialFormState = {
         title: '',
         date: new Date(),
         time: defaultTime,
+        endTime: defaultEndTime,
         description: '',
     };
     const [formData, setFormData] = useState(initialFormState);
@@ -47,7 +51,7 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
     };
 
     const handleAdd = () => {
-        const { title, date, time, description } = formData;
+        const { title, date, time, endTime, description } = formData;
 
         if (!title) {
             Alert.alert("ข้อผิดพลาด", "กรุณากรอกชื่อกิจกรรม");
@@ -55,17 +59,37 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
         }
 
         const activityDay = getThaiDay(date);
-        const activityMinutes = parseTimeToMinutes(time);
+        const activityStartMinutes = parseTimeToMinutes(time);
+        const activityEndMinutes = parseTimeToMinutes(endTime);
+
+        if (activityEndMinutes <= activityStartMinutes) {
+            Alert.alert("ข้อผิดพลาด", "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น");
+            return;
+        }
 
         const hasOverlap = courses.some(course => {
-            if (course.day === activityDay) {
-                const courseStart = parseTimeToMinutes(new Date(course.startTime));
-                const courseEnd = parseTimeToMinutes(new Date(course.endTime));
-                if (activityMinutes >= courseStart && activityMinutes <= courseEnd) {
-                    return true;
+            const courseSchedules = course.schedules || [{
+                id: 'legacy',
+                day: course.day,
+                startTime: course.startTime,
+                endTime: course.endTime
+            }];
+
+            return courseSchedules.some(sch => {
+                if (sch.day === activityDay) {
+                    const courseStart = parseTimeToMinutes(new Date(sch.startTime));
+                    const courseEnd = parseTimeToMinutes(new Date(sch.endTime));
+                    // Check if activity time block overlaps with course time block
+                    if (
+                        (activityStartMinutes >= courseStart && activityStartMinutes < courseEnd) ||
+                        (activityEndMinutes > courseStart && activityEndMinutes <= courseEnd) ||
+                        (activityStartMinutes <= courseStart && activityEndMinutes >= courseEnd)
+                    ) {
+                        return true;
+                    }
                 }
-            }
-            return false;
+                return false;
+            });
         });
 
         if (hasOverlap) {
@@ -78,6 +102,7 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
             title,
             date: date.toISOString(),
             time: time.toISOString(),
+            endTime: endTime.toISOString(),
             description,
         };
 
@@ -122,9 +147,15 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
                             <CalendarIcon size={20} color={COLORS.text} />
                         </TouchableOpacity>
 
-                        <Text style={styles.inputLabel}>เวลา</Text>
+                        <Text style={styles.inputLabel}>เวลาเริ่มต้น</Text>
                         <TouchableOpacity style={styles.pickerButton} onPress={() => setShowPicker('time')}>
                             <Text style={styles.pickerText}>{formatTime(formData.time)}</Text>
+                            <Clock size={20} color={COLORS.text} />
+                        </TouchableOpacity>
+
+                        <Text style={styles.inputLabel}>เวลาสิ้นสุด</Text>
+                        <TouchableOpacity style={styles.pickerButton} onPress={() => setShowPicker('endTime')}>
+                            <Text style={styles.pickerText}>{formatTime(formData.endTime)}</Text>
                             <Clock size={20} color={COLORS.text} />
                         </TouchableOpacity>
 
@@ -142,8 +173,8 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
 
                         {showPicker && (
                             <DateTimePicker
-                                value={showPicker === 'date' ? formData.date : formData.time}
-                                mode={showPicker}
+                                value={showPicker === 'date' ? formData.date : showPicker === 'time' ? formData.time : formData.endTime}
+                                mode={showPicker === 'date' ? 'date' : 'time'}
                                 is24Hour={true}
                                 display="default"
                                 onChange={(event, selectedDate) => {
@@ -152,8 +183,10 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
                                     if (selectedDate) {
                                         if (pickerType === 'date') {
                                             updateForm('date', selectedDate);
-                                        } else {
+                                        } else if (pickerType === 'time') {
                                             updateForm('time', selectedDate);
+                                        } else if (pickerType === 'endTime') {
+                                            updateForm('endTime', selectedDate);
                                         }
                                     }
                                 }}

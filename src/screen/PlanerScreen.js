@@ -107,7 +107,7 @@ export default function PlanerScreen() {
                         <View style={styles.activityInfo}>
                             <Text style={styles.activityTitle}>{activity.title}</Text>
                             <Text style={styles.activityTime}>
-                                {formatActivityDate(activity.date)} • {formatActivityTime(activity.time)}
+                                {formatActivityDate(activity.date)} • {formatActivityTime(activity.time)} - {activity.endTime ? formatActivityTime(activity.endTime) : ''}
                             </Text>
                             {!!activity.description && (
                                 <Text style={styles.activityDesc}>{activity.description}</Text>

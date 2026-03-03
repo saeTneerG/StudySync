@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (name, email, password) => {
+    const register = async (name, email, password, faculty = '', major = '', year = '') => {
         setIsLoading(true);
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -44,8 +44,9 @@ export const AuthProvider = ({ children }) => {
             const newUserInfo = {
                 name,
                 email,
-                faculty: '',
-                year: ''
+                faculty,
+                major,
+                year
             };
 
             await setDoc(doc(db, "users", user.uid), newUserInfo);

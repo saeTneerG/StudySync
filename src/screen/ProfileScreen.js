@@ -1,47 +1,38 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, LogOut, Building2, GraduationCap, Trash2, Edit3 } from 'lucide-react-native';
+import { User, LogOut, Building2, GraduationCap, Trash2, Edit3, BookOpen } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS } from '../constants/colors';
 import { sharedStyles } from '../constants/sharedStyles';
 import { AuthContext } from '../context/AuthContext';
 import { DataContext } from '../context/DataContext';
 import ScreenHeader from '../components/ScreenHeader';
-
-const FACULTIES = [
-    'ศิลปศาสตร์และวิทยาศาสตร์',
-    'วิศวกรรมศาสตร์',
-    'คณะเกษตร',
-    'คณะประมง',
-    'คณะสัตวแพทย์',
-    'คณะวิทยาศาสตร์การกีฬา',
-    'คณะศึกษาศาสตร์และพัฒนศาสตร์',
-    'คณะสิ่งแวดล้อม',
-    'คณะอุตสาหกรรมบริการ'
-];
+import { FACULTIES, FACULTIES_AND_MAJORS } from '../constants/faculties';
 
 const YEARS = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
 export default function ProfileScreen() {
     const { userInfo, logout, updateProfile } = useContext(AuthContext);
-    const { clearAllCourses } = useContext(DataContext);
+    const { clearAllData } = useContext(DataContext);
     const [name, setName] = useState('');
-    const [faculty, setFaculty] = useState('วิศวกรรมศาสตร์');
+    const [faculty, setFaculty] = useState('คณะวิศวกรรมศาสตร์ กำแพงแสน');
+    const [major, setMajor] = useState('');
     const [year, setYear] = useState('1');
     const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         if (userInfo) {
             setName(userInfo.name || '');
-            setFaculty(userInfo.faculty || 'วิศวกรรมศาสตร์');
+            setFaculty(userInfo.faculty || 'คณะวิศวกรรมศาสตร์ กำแพงแสน');
+            setMajor(userInfo.major || '');
             setYear(userInfo.year || '1');
         }
     }, [userInfo]);
 
     const handleSave = async () => {
         try {
-            await updateProfile({ name, faculty, year });
+            await updateProfile({ name, faculty, major, year });
             setIsEditing(false);
             Alert.alert('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อยแล้ว');
         } catch (e) {
@@ -52,7 +43,8 @@ export default function ProfileScreen() {
     const handleCancelEdit = () => {
         if (userInfo) {
             setName(userInfo.name || '');
-            setFaculty(userInfo.faculty || 'วิศวกรรมศาสตร์');
+            setFaculty(userInfo.faculty || 'คณะวิศวกรรมศาสตร์ กำแพงแสน');
+            setMajor(userInfo.major || '');
             setYear(userInfo.year || '1');
         }
         setIsEditing(false);
@@ -67,7 +59,7 @@ export default function ProfileScreen() {
                 {
                     text: 'ล้างข้อมูล',
                     style: 'destructive',
-                    onPress: () => clearAllCourses(),
+                    onPress: () => clearAllData(),
                 }
             ]
         );
@@ -131,19 +123,44 @@ export default function ProfileScreen() {
                             <View style={styles.inputGroup}>
                                 <View style={styles.inputLabelContainer}>
                                     <Building2 size={18} color={COLORS.textSecondary} />
-                                    <Text style={styles.inputLabel}>คณะ/สาขา</Text>
+                                    <Text style={styles.inputLabel}>คณะ</Text>
                                 </View>
                                 <View style={[styles.pickerContainer, !isEditing && styles.pickerDisabled]}>
                                     <Picker
                                         selectedValue={faculty}
-                                        onValueChange={(itemValue) => setFaculty(itemValue)}
+                                        onValueChange={(itemValue) => {
+                                            setFaculty(itemValue);
+                                            setMajor('');
+                                        }}
                                         style={styles.picker}
                                         dropdownIconColor={COLORS.textSecondary}
                                         enabled={isEditing}
                                     >
+                                        <Picker.Item label="เลือกคณะ" value="" color={COLORS.textSecondary} style={{ fontSize: 16 }} enabled={false} />
                                         {FACULTIES.map((item, index) => (
                                             <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
                                         ))}
+                                    </Picker>
+                                </View>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <View style={styles.inputLabelContainer}>
+                                    <BookOpen size={18} color={COLORS.textSecondary} />
+                                    <Text style={styles.inputLabel}>สาขาวิชา</Text>
+                                </View>
+                                <View style={[styles.pickerContainer, (!isEditing || !faculty) && styles.pickerDisabled]}>
+                                    <Picker
+                                        selectedValue={major}
+                                        onValueChange={(itemValue) => setMajor(itemValue)}
+                                        style={styles.picker}
+                                        dropdownIconColor={COLORS.textSecondary}
+                                        enabled={isEditing && !!faculty}
+                                    >
+                                        <Picker.Item label="เลือกสาขาวิชา" value="" color={COLORS.textSecondary} style={{ fontSize: 16 }} enabled={false} />
+                                        {faculty ? FACULTIES_AND_MAJORS[faculty]?.map((item, index) => (
+                                            <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
+                                        )) : null}
                                     </Picker>
                                 </View>
                             </View>
