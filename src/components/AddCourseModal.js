@@ -11,19 +11,55 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
     const defaultEnd = new Date();
     defaultEnd.setHours(12, 0, 0, 0);
 
-    const initialFormState = {
-        subjectName: '',
-        subjectCode: '',
-        room: '',
+    const initialSchedule = {
+        id: Date.now().toString(),
         day: 'จันทร์',
         startTime: defaultStart,
         endTime: defaultEnd,
     };
+
+    const initialFormState = {
+        subjectName: '',
+        subjectCode: '',
+        room: '',
+        schedules: [initialSchedule],
+    };
+
     const [formData, setFormData] = useState(initialFormState);
-    const [showTimePicker, setShowTimePicker] = useState(null);
+    const [showTimePicker, setShowTimePicker] = useState(null); // { id: scheduleId, type: 'start' | 'end' }
 
     const updateForm = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const updateSchedule = (id, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            schedules: prev.schedules.map(sch =>
+                sch.id === id ? { ...sch, [field]: value } : sch
+            )
+        }));
+    };
+
+    const addScheduleBlock = () => {
+        const newSchedule = {
+            id: Date.now().toString(),
+            day: 'จันทร์',
+            startTime: defaultStart,
+            endTime: defaultEnd,
+        };
+        setFormData(prev => ({
+            ...prev,
+            schedules: [...prev.schedules, newSchedule]
+        }));
+    };
+
+    const removeScheduleBlock = (id) => {
+        if (formData.schedules.length === 1) return;
+        setFormData(prev => ({
+            ...prev,
+            schedules: prev.schedules.filter(sch => sch.id !== id)
+        }));
     };
 
     const formatTime = (date) => {
@@ -39,28 +75,72 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
     };
 
     const handleAdd = () => {
-        const { subjectName, subjectCode, room, day, startTime, endTime } = formData;
+        const { subjectName, subjectCode, room, schedules } = formData;
 
         if (!subjectName || !subjectCode || !room) {
             Alert.alert("ข้อผิดพลาด", "กรุณากรอกข้อมูลให้ครบถ้วน");
             return;
         }
 
-        const startMinutes = parseTimeToMinutes(startTime);
-        const endMinutes = parseTimeToMinutes(endTime);
+        // Check for duplicate course
+        const isDuplicate = courses.some(course =>
+            course.subjectCode.trim().toLowerCase() === subjectCode.trim().toLowerCase() ||
+            course.subjectName.trim().toLowerCase() === subjectName.trim().toLowerCase()
+        );
 
-        if (startMinutes >= endMinutes) {
-            Alert.alert("ข้อผิดพลาด", "เวลาเริ่มต้องก่อนเวลาจบ");
+        if (isDuplicate) {
+            Alert.alert("ข้อผิดพลาด", "รหัสวิชาหรือชื่อวิชานี้มีอยู่แล้ว");
             return;
         }
 
-        const hasOverlap = courses.some(course => {
-            if (course.day === day) {
-                const courseStart = parseTimeToMinutes(new Date(course.startTime));
-                const courseEnd = parseTimeToMinutes(new Date(course.endTime));
-                return Math.max(startMinutes, courseStart) < Math.min(endMinutes, courseEnd);
+        // Validate individual schedule times
+        for (let sch of schedules) {
+            const startMinutes = parseTimeToMinutes(sch.startTime);
+            const endMinutes = parseTimeToMinutes(sch.endTime);
+            if (startMinutes >= endMinutes) {
+                Alert.alert("ข้อผิดพลาด", "เวลาเริ่มต้องก่อนเวลาจบในทุกช่วงเวลา");
+                return;
             }
-            return false;
+        }
+
+        // Validate overlap checking within the new schedules
+        for (let i = 0; i < schedules.length; i++) {
+            for (let j = i + 1; j < schedules.length; j++) {
+                if (schedules[i].day === schedules[j].day) {
+                    const start1 = parseTimeToMinutes(schedules[i].startTime);
+                    const end1 = parseTimeToMinutes(schedules[i].endTime);
+                    const start2 = parseTimeToMinutes(schedules[j].startTime);
+                    const end2 = parseTimeToMinutes(schedules[j].endTime);
+                    if (Math.max(start1, start2) < Math.min(end1, end2)) {
+                        Alert.alert("ข้อผิดพลาด", "เวลาของวิชาที่เพิ่มซ้อนทับกันเอง");
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Check against existing courses
+        const hasOverlap = courses.some(course => {
+            const courseSchedules = course.schedules || [{
+                id: 'legacy',
+                day: course.day,
+                startTime: course.startTime,
+                endTime: course.endTime
+            }];
+
+            return courseSchedules.some(cSch => {
+                const cStart = parseTimeToMinutes(new Date(cSch.startTime));
+                const cEnd = parseTimeToMinutes(new Date(cSch.endTime));
+
+                return schedules.some(newSch => {
+                    if (cSch.day === newSch.day) {
+                        const newStart = parseTimeToMinutes(newSch.startTime);
+                        const newEnd = parseTimeToMinutes(newSch.endTime);
+                        return Math.max(newStart, cStart) < Math.min(newEnd, cEnd);
+                    }
+                    return false;
+                });
+            });
         });
 
         if (hasOverlap) {
@@ -68,14 +148,23 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
             return;
         }
 
+        // Prepare schedules for saving
+        const formattedSchedules = schedules.map(sch => ({
+            ...sch,
+            startTime: sch.startTime.toISOString(),
+            endTime: sch.endTime.toISOString(),
+        }));
+
         const newCourse = {
             id: Date.now().toString(),
             subjectName,
             subjectCode,
             room,
-            day,
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
+            // Fallbacks for legacy single-item access just in case
+            day: formattedSchedules[0].day,
+            startTime: formattedSchedules[0].startTime,
+            endTime: formattedSchedules[0].endTime,
+            schedules: formattedSchedules,
         };
 
         onAddCourse(newCourse);
@@ -131,51 +220,82 @@ export default function AddCourseModal({ visible, onClose, onAddCourse, courses,
                             placeholderTextColor="#A0A0A0"
                         />
 
-                        <Text style={styles.inputLabel}>วัน</Text>
-                        <View style={styles.pickerContainer}>
-                            <Picker
-                                selectedValue={formData.day}
-                                onValueChange={(itemValue) => updateForm('day', itemValue)}
-                                style={styles.picker}
-                            >
-                                {dayOptions.map(d => (
-                                    <Picker.Item key={d.value} label={d.label} value={d.value} />
-                                ))}
-                            </Picker>
+                        <View style={styles.scheduleHeaderRow}>
+                            <Text style={styles.inputLabel}>วันและเวลาเรียน</Text>
+                            <TouchableOpacity onPress={addScheduleBlock}>
+                                <Text style={styles.addScheduleText}>+ เพิ่มเวลาเรียน</Text>
+                            </TouchableOpacity>
                         </View>
 
-                        <View style={styles.timeRow}>
-                            <View style={[styles.timeColumn, { marginRight: 10 }]}>
-                                <Text style={styles.inputLabel}>เวลาเริ่ม</Text>
-                                <TouchableOpacity style={styles.timePickerButton} onPress={() => setShowTimePicker('start')}>
-                                    <Text style={styles.timePickerText}>{formatTime(formData.startTime)}</Text>
-                                    <Clock size={20} color={COLORS.text} />
-                                </TouchableOpacity>
+                        {formData.schedules.map((schedule, index) => (
+                            <View key={schedule.id} style={styles.scheduleBlock}>
+                                <View style={styles.scheduleBlockHeader}>
+                                    <Text style={styles.scheduleIndexText}>เวลาเรียนชุดที่ {index + 1}</Text>
+                                    {formData.schedules.length > 1 && (
+                                        <TouchableOpacity onPress={() => removeScheduleBlock(schedule.id)}>
+                                            <X size={18} color="#FF6B6B" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+
+                                <View style={styles.pickerContainer}>
+                                    <Picker
+                                        selectedValue={schedule.day}
+                                        onValueChange={(itemValue) => updateSchedule(schedule.id, 'day', itemValue)}
+                                        style={styles.picker}
+                                    >
+                                        {dayOptions.map(d => (
+                                            <Picker.Item key={d.value} label={d.label} value={d.value} />
+                                        ))}
+                                    </Picker>
+                                </View>
+
+                                <View style={styles.timeRow}>
+                                    <View style={[styles.timeColumn, { marginRight: 10 }]}>
+                                        <Text style={[styles.inputLabel, { marginTop: 8 }]}>เวลาเริ่ม</Text>
+                                        <TouchableOpacity
+                                            style={styles.timePickerButton}
+                                            onPress={() => setShowTimePicker({ id: schedule.id, type: 'start' })}
+                                        >
+                                            <Text style={styles.timePickerText}>{formatTime(schedule.startTime)}</Text>
+                                            <Clock size={20} color={COLORS.text} />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={[styles.timeColumn, { marginLeft: 10 }]}>
+                                        <Text style={[styles.inputLabel, { marginTop: 8 }]}>เวลาจบ</Text>
+                                        <TouchableOpacity
+                                            style={styles.timePickerButton}
+                                            onPress={() => setShowTimePicker({ id: schedule.id, type: 'end' })}
+                                        >
+                                            <Text style={styles.timePickerText}>{formatTime(schedule.endTime)}</Text>
+                                            <Clock size={20} color={COLORS.text} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
                             </View>
-                            <View style={[styles.timeColumn, { marginLeft: 10 }]}>
-                                <Text style={styles.inputLabel}>เวลาจบ</Text>
-                                <TouchableOpacity style={styles.timePickerButton} onPress={() => setShowTimePicker('end')}>
-                                    <Text style={styles.timePickerText}>{formatTime(formData.endTime)}</Text>
-                                    <Clock size={20} color={COLORS.text} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                        ))}
 
                         {showTimePicker && (
                             <DateTimePicker
-                                value={showTimePicker === 'start' ? formData.startTime : formData.endTime}
+                                value={
+                                    (() => {
+                                        const sch = formData.schedules.find(s => s.id === showTimePicker.id);
+                                        if (!sch) return defaultStart;
+                                        return showTimePicker.type === 'start' ? sch.startTime : sch.endTime;
+                                    })()
+                                }
                                 mode="time"
                                 is24Hour={true}
                                 display="default"
                                 onChange={(event, selectedDate) => {
-                                    const pickerType = showTimePicker;
-                                    setShowTimePicker(Platform.OS === 'ios' ? pickerType : null);
-                                    if (selectedDate) {
-                                        if (pickerType === 'start') {
-                                            updateForm('startTime', selectedDate);
-                                        } else {
-                                            updateForm('endTime', selectedDate);
-                                        }
+                                    const pickerState = showTimePicker;
+                                    setShowTimePicker(Platform.OS === 'ios' ? pickerState : null);
+                                    if (selectedDate && pickerState) {
+                                        updateSchedule(
+                                            pickerState.id,
+                                            pickerState.type === 'start' ? 'startTime' : 'endTime',
+                                            selectedDate
+                                        );
                                     }
                                 }}
                             />
@@ -299,5 +419,36 @@ const styles = StyleSheet.create({
         color: COLORS.text,
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    scheduleHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 15,
+        marginBottom: 8,
+    },
+    addScheduleText: {
+        color: COLORS.primary,
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    scheduleBlock: {
+        backgroundColor: '#F8F9FA',
+        padding: 15,
+        borderRadius: 12,
+        marginBottom: 15,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    scheduleBlockHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    scheduleIndexText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: COLORS.textSecondary,
     },
 });

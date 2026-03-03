@@ -5,7 +5,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
 import { authStyles } from '../constants/authStyles';
 import { AuthContext } from '../context/AuthContext';
-import { UserPlus, Lock, BookOpen, Mail } from 'lucide-react-native';
+import { UserPlus, Lock, BookOpen, Mail, Building2, GraduationCap } from 'lucide-react-native';
+import { Picker } from '@react-native-picker/picker';
+import { FACULTIES, FACULTIES_AND_MAJORS } from '../constants/faculties';
 
 export default function RegisterScreen({ navigation }) {
     const { register } = useContext(AuthContext);
@@ -13,9 +15,12 @@ export default function RegisterScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [faculty, setFaculty] = useState('');
+    const [major, setMajor] = useState('');
+    const [year, setYear] = useState('');
 
     const handleRegister = async () => {
-        if (!name || !email || !password || !confirmPassword) {
+        if (!name || !email || !password || !confirmPassword || !faculty || !major || !year) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
         }
@@ -26,7 +31,7 @@ export default function RegisterScreen({ navigation }) {
         }
 
         try {
-            await register(name, email, password);
+            await register(name, email, password, faculty, major, year);
         } catch (e) {
             Alert.alert('Registration Failed', e.message);
         }
@@ -79,6 +84,70 @@ export default function RegisterScreen({ navigation }) {
                                     onChangeText={setEmail}
                                     autoCapitalize="none"
                                 />
+                            </View>
+
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
+                                    <Building2 size={16} color={COLORS.textSecondary} />
+                                    <Text style={authStyles.label}>คณะ</Text>
+                                </View>
+                                <View style={[authStyles.input, { paddingHorizontal: 0, justifyContent: 'center', overflow: 'hidden' }]}>
+                                    <Picker
+                                        selectedValue={faculty}
+                                        onValueChange={(itemValue) => {
+                                            setFaculty(itemValue);
+                                            setMajor('');
+                                        }}
+                                        style={{ color: COLORS.text, width: '100%', height: '100%' }}
+                                        dropdownIconColor={COLORS.textSecondary}
+                                    >
+                                        <Picker.Item label="เลือกคณะ" value="" color={COLORS.textSecondary} style={{ fontSize: 15 }} enabled={false} />
+                                        {FACULTIES.map((item, index) => (
+                                            <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 15 }} />
+                                        ))}
+                                    </Picker>
+                                </View>
+                            </View>
+
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
+                                    <BookOpen size={16} color={COLORS.textSecondary} />
+                                    <Text style={authStyles.label}>สาขาวิชา</Text>
+                                </View>
+                                <View style={[authStyles.input, { paddingHorizontal: 0, justifyContent: 'center', overflow: 'hidden' }, !faculty && { opacity: 0.5 }]}>
+                                    <Picker
+                                        selectedValue={major}
+                                        onValueChange={(itemValue) => setMajor(itemValue)}
+                                        style={{ color: COLORS.text, width: '100%', height: '100%' }}
+                                        dropdownIconColor={COLORS.textSecondary}
+                                        enabled={!!faculty}
+                                    >
+                                        <Picker.Item label="เลือกสาขาวิชา" value="" color={COLORS.textSecondary} style={{ fontSize: 15 }} enabled={false} />
+                                        {faculty ? FACULTIES_AND_MAJORS[faculty]?.map((item, index) => (
+                                            <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 15 }} />
+                                        )) : null}
+                                    </Picker>
+                                </View>
+                            </View>
+
+                            <View style={authStyles.inputWrapper}>
+                                <View style={authStyles.labelContainer}>
+                                    <GraduationCap size={16} color={COLORS.textSecondary} />
+                                    <Text style={authStyles.label}>ชั้นปี</Text>
+                                </View>
+                                <View style={[authStyles.input, { paddingHorizontal: 0, justifyContent: 'center', overflow: 'hidden' }]}>
+                                    <Picker
+                                        selectedValue={year}
+                                        onValueChange={(itemValue) => setYear(itemValue)}
+                                        style={{ color: COLORS.text, width: '100%', height: '100%' }}
+                                        dropdownIconColor={COLORS.textSecondary}
+                                    >
+                                        <Picker.Item label="เลือกชั้นปี" value="" color={COLORS.textSecondary} style={{ fontSize: 15 }} enabled={false} />
+                                        {['1', '2', '3', '4'].map((item) => (
+                                            <Picker.Item key={item} label={`ปี ${item}`} value={item} color={COLORS.text} style={{ fontSize: 15 }} />
+                                        ))}
+                                    </Picker>
+                                </View>
                             </View>
 
                             <View style={authStyles.inputWrapper}>

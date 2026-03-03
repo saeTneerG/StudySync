@@ -85,20 +85,40 @@ export const DataProvider = ({ children }) => {
         }
     };
 
-    const clearAllCourses = async () => {
+    const clearAllData = async () => {
         if (!userInfo?.id) return;
         try {
-            const coursesRef = collection(db, "users", userInfo.id, "courses");
-            const snapshot = await getDocs(coursesRef);
             const deletePromises = [];
-            snapshot.forEach((document) => {
-                deletePromises.push(deleteDoc(doc(db, "users", userInfo.id, "courses", document.id)));
+            const userId = userInfo.id;
+
+            // Clear Courses
+            const coursesRef = collection(db, "users", userId, "courses");
+            const coursesSnapshot = await getDocs(coursesRef);
+            coursesSnapshot.forEach((document) => {
+                deletePromises.push(deleteDoc(doc(db, "users", userId, "courses", document.id)));
             });
+
+            // Clear Activities
+            const activitiesRef = collection(db, "users", userId, "activities");
+            const activitiesSnapshot = await getDocs(activitiesRef);
+            activitiesSnapshot.forEach((document) => {
+                deletePromises.push(deleteDoc(doc(db, "users", userId, "activities", document.id)));
+            });
+
+            // Clear Study Plan
+            const studyPlanRef = collection(db, "users", userId, "studyPlanItems");
+            const studyPlanSnapshot = await getDocs(studyPlanRef);
+            studyPlanSnapshot.forEach((document) => {
+                deletePromises.push(deleteDoc(doc(db, "users", userId, "studyPlanItems", document.id)));
+            });
+
             await Promise.all(deletePromises);
             setCourses([]);
-            Alert.alert('สำเร็จ', 'ล้างข้อมูลการเรียนเรียบร้อยแล้ว');
+            setActivities([]);
+            setStudyPlanItems([]);
+            Alert.alert('สำเร็จ', 'ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว');
         } catch (e) {
-            console.error("Failed to delete courses", e);
+            console.error("Failed to delete all data", e);
             Alert.alert('ข้อผิดพลาด', 'ไม่สามารถล้างข้อมูลได้');
         }
     };
@@ -244,7 +264,7 @@ export const DataProvider = ({ children }) => {
             isLoading,
             addCourse,
             deleteCourse,
-            clearAllCourses,
+            clearAllData,
             addExam,
             deleteExam,
             addActivity,

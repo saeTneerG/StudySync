@@ -11,14 +11,29 @@ export default function ScheduleTab({ courses, dayOptions, setModalVisible, onDe
         });
 
         courses.forEach(course => {
-            if (grouped[course.day]) {
-                grouped[course.day].courses.push(course);
-            }
+            const courseSchedules = course.schedules || [{
+                id: 'legacy',
+                day: course.day,
+                startTime: course.startTime,
+                endTime: course.endTime
+            }];
+
+            courseSchedules.forEach(sch => {
+                if (grouped[sch.day]) {
+                    // Create a clone of the course with this specific schedule's time for rendering
+                    grouped[sch.day].courses.push({
+                        ...course,
+                        renderStartTime: sch.startTime,
+                        renderEndTime: sch.endTime,
+                        scheduleId: sch.id
+                    });
+                }
+            });
         });
 
         Object.keys(grouped).forEach(k => {
             grouped[k].courses.sort((a, b) => {
-                return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+                return new Date(a.renderStartTime).getTime() - new Date(b.renderStartTime).getTime();
             });
         });
 
@@ -39,10 +54,10 @@ export default function ScheduleTab({ courses, dayOptions, setModalVisible, onDe
                 <Text style={[styles.dayText, { color: dayGroup.color }]}>{dayGroup.name}</Text>
                 <View style={styles.courseList}>
                     {dayGroup.courses.map(course => (
-                        <View key={course.id} style={styles.courseItem}>
+                        <View key={`${course.id}-${course.scheduleId}`} style={styles.courseItem}>
                             <View style={styles.courseTime}>
                                 <Text style={styles.timeText}>
-                                    {new Date(course.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(course.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    {new Date(course.renderStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} - {new Date(course.renderEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                                 </Text>
                             </View>
                             <View style={styles.courseDetails}>
