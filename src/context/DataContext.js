@@ -73,14 +73,24 @@ export const DataProvider = ({ children }) => {
     const deleteCourse = async (id) => {
         if (!userInfo?.id) return;
         const previous = [...courses];
+        const previousStudyPlan = [...studyPlanItems];
+        const linkedItems = studyPlanItems.filter(i => i.courseId === id);
+
         setCourses(prev => prev.filter(c => c.id !== id));
+        setStudyPlanItems(prev => prev.filter(i => i.courseId !== id));
 
         try {
             const courseRef = doc(db, "users", userInfo.id, "courses", id);
             await deleteDoc(courseRef);
+
+            const deletePromises = linkedItems.map(item =>
+                deleteDoc(doc(db, "users", userInfo.id, "studyPlanItems", item.id))
+            );
+            await Promise.all(deletePromises);
         } catch (e) {
             console.error("Failed to delete course", e);
             setCourses(previous);
+            setStudyPlanItems(previousStudyPlan);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถลบข้อมูลได้");
         }
     };
