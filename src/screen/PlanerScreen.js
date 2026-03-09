@@ -1,9 +1,10 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import { COLORS } from '../constants/colors';
 import { sharedStyles } from '../constants/sharedStyles';
 import { DataContext } from '../context/DataContext';
 import { Trash2, CheckCircle, Circle } from 'lucide-react-native';
+import { Picker } from '@react-native-picker/picker';
 import ScreenHeader from '../components/ScreenHeader';
 import TabBar from '../components/TabBar';
 import AddActivityModal from '../components/AddActivityModal';
@@ -28,6 +29,7 @@ export default function PlanerScreen() {
 
     const [activeTab, setActiveTab] = useState('activity');
     const [studyPlanInput, setStudyPlanInput] = useState('');
+    const [selectedCourseId, setSelectedCourseId] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
 
     const handleAddActivity = async (newActivity) => {
@@ -62,7 +64,17 @@ export default function PlanerScreen() {
             createdAt: Date.now(),
         };
 
+        if (selectedCourseId) {
+            const course = courses.find(c => c.id === selectedCourseId);
+            if (course) {
+                newItem.courseId = course.id;
+                newItem.courseName = course.subjectName;
+                newItem.courseCode = course.subjectCode;
+            }
+        }
+
         setStudyPlanInput('');
+        setSelectedCourseId('');
         try {
             await addStudyPlanItem(newItem);
         } catch (e) { /* handled in DataContext */ }
@@ -137,6 +149,24 @@ export default function PlanerScreen() {
                         </Text>
                     )}
 
+                    {courses.length > 0 && (
+                        <>
+                            <Text style={styles.pickerLabel}>เลือกรายวิชา (ไม่บังคับ)</Text>
+                            <View style={styles.pickerContainer}>
+                                <Picker
+                                    selectedValue={selectedCourseId}
+                                    onValueChange={(value) => setSelectedCourseId(value)}
+                                    style={styles.picker}
+                                >
+                                    <Picker.Item label="-- ไม่เลือกวิชา --" value="" />
+                                    {courses.map(c => (
+                                        <Picker.Item key={c.id} label={`${c.subjectCode} ${c.subjectName}`} value={c.id} />
+                                    ))}
+                                </Picker>
+                            </View>
+                        </>
+                    )}
+
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
@@ -168,12 +198,19 @@ export default function PlanerScreen() {
                                     ) : (
                                         <Circle size={24} color={COLORS.border} />
                                     )}
-                                    <Text style={[
-                                        styles.checklistText,
-                                        item.completed && styles.checklistTextCompleted
-                                    ]}>
-                                        {item.text}
-                                    </Text>
+                                    <View style={styles.checklistTextContainer}>
+                                        <Text style={[
+                                            styles.checklistText,
+                                            item.completed && styles.checklistTextCompleted
+                                        ]}>
+                                            {item.text}
+                                        </Text>
+                                        {!!item.courseCode && (
+                                            <Text style={styles.checklistCourseTag}>
+                                                {item.courseCode} {item.courseName}
+                                            </Text>
+                                        )}
+                                    </View>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => handleDeleteStudyPlanItem(item.id)}
@@ -312,11 +349,35 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flex: 1,
     },
+    checklistTextContainer: {
+        marginLeft: 12,
+        flex: 1,
+    },
     checklistText: {
         fontSize: 15,
         color: COLORS.text,
-        marginLeft: 12,
-        flex: 1,
+    },
+    checklistCourseTag: {
+        fontSize: 12,
+        color: COLORS.primary,
+        marginTop: 3,
+    },
+    pickerLabel: {
+        fontSize: 13,
+        color: COLORS.textSecondary,
+        marginBottom: 6,
+    },
+    pickerContainer: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: COLORS.background,
+        marginBottom: 12,
+    },
+    picker: {
+        height: Platform.OS === 'ios' ? 120 : 54,
+        width: '100%',
     },
     checklistTextCompleted: {
         textDecorationLine: 'line-through',
