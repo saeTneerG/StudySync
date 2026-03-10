@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { db } from '../config/firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { AuthContext } from './AuthContext';
 
 export const DataContext = createContext();
@@ -14,58 +14,66 @@ export const DataProvider = ({ children }) => {
     const [studyPlanItems, setStudyPlanItems] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const loadAllData = useCallback(async () => {
+    useEffect(() => {
         if (!userInfo?.id) return;
+
         setIsLoading(true);
-        try {
-            const coursesRef = collection(db, "users", userInfo.id, "courses");
-            const courseSnapshot = await getDocs(coursesRef);
+
+        const coursesRef = collection(db, "users", userInfo.id, "courses");
+        const unsubscribeCourses = onSnapshot(coursesRef, (snapshot) => {
             const loadedCourses = [];
-            courseSnapshot.forEach((d) => {
+            snapshot.forEach((d) => {
                 loadedCourses.push({ id: d.id, ...d.data(), exams: d.data().exams || [] });
             });
             setCourses(loadedCourses);
+        }, (error) => {
+            console.error("Failed to listen to courses", error);
+        });
 
-            const activitiesRef = collection(db, "users", userInfo.id, "activities");
-            const activitySnapshot = await getDocs(activitiesRef);
+        const activitiesRef = collection(db, "users", userInfo.id, "activities");
+        const unsubscribeActivities = onSnapshot(activitiesRef, (snapshot) => {
             const loadedActivities = [];
-            activitySnapshot.forEach((d) => {
+            snapshot.forEach((d) => {
                 loadedActivities.push({ id: d.id, ...d.data() });
             });
             loadedActivities.sort((a, b) => new Date(a.time) - new Date(b.time));
             setActivities(loadedActivities);
+        }, (error) => {
+            console.error("Failed to listen to activities", error);
+        });
 
-            const studyPlanRef = collection(db, "users", userInfo.id, "studyPlanItems");
-            const studyPlanSnapshot = await getDocs(studyPlanRef);
+        const studyPlanRef = collection(db, "users", userInfo.id, "studyPlanItems");
+        const unsubscribeStudyPlan = onSnapshot(studyPlanRef, (snapshot) => {
             const loadedStudyPlanItems = [];
-            studyPlanSnapshot.forEach((d) => {
+            snapshot.forEach((d) => {
                 loadedStudyPlanItems.push({ id: d.id, ...d.data() });
             });
             loadedStudyPlanItems.sort((a, b) => a.createdAt - b.createdAt);
             setStudyPlanItems(loadedStudyPlanItems);
-        } catch (e) {
-            console.error("Failed to load data from Firestore", e);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [userInfo?.id]);
 
-    useEffect(() => {
-        loadAllData();
-    }, [loadAllData]);
+            // Set loading to false once at least one snapshot resolves (simplification)
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Failed to listen to study plan", error);
+            setIsLoading(false);
+        });
+
+        return () => {
+            unsubscribeCourses();
+            unsubscribeActivities();
+            unsubscribeStudyPlan();
+        };
+    }, [userInfo?.id]);
 
     const addCourse = async (newCourse) => {
         if (!userInfo?.id) return;
         const courseWithExams = { ...newCourse, exams: [] };
-        setCourses(prev => [...prev, courseWithExams]);
-
         try {
             const courseRef = doc(db, "users", userInfo.id, "courses", newCourse.id);
             await setDoc(courseRef, courseWithExams);
         } catch (e) {
             console.error("Failed to save course", e);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถบันทึกข้อมูลได้");
-            setCourses(prev => prev.filter(c => c.id !== newCourse.id));
             throw e;
         }
     };
@@ -123,9 +131,6 @@ export const DataProvider = ({ children }) => {
             });
 
             await Promise.all(deletePromises);
-            setCourses([]);
-            setActivities([]);
-            setStudyPlanItems([]);
             Alert.alert('สำเร็จ', 'ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว');
         } catch (e) {
             console.error("Failed to delete all data", e);
@@ -136,7 +141,6 @@ export const DataProvider = ({ children }) => {
     const addExam = async (newExam) => {
         if (!userInfo?.id) return;
         let targetCourse = null;
-        const previous = [...courses];
         const updated = courses.map(course => {
             if (course.id === newExam.courseId) {
                 targetCourse = { ...course, exams: [...course.exams, newExam] };
@@ -145,7 +149,6 @@ export const DataProvider = ({ children }) => {
             return course;
         });
         if (!targetCourse) return;
-        setCourses(updated);
 
         try {
             const courseRef = doc(db, "users", userInfo.id, "courses", targetCourse.id);
@@ -153,23 +156,18 @@ export const DataProvider = ({ children }) => {
         } catch (e) {
             console.error("Failed to save exam", e);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถบันทึกข้อมูลได้");
-            setCourses(previous);
             throw e;
         }
     };
 
     const deleteExam = async (examId, courseId) => {
         if (!userInfo?.id) return;
-        const previous = [...courses];
         let targetCourse = null;
-        const updated = courses.map(course => {
+        courses.map(course => {
             if (course.id === courseId) {
                 targetCourse = { ...course, exams: course.exams.filter(e => e.id !== examId) };
-                return targetCourse;
             }
-            return course;
         });
-        setCourses(updated);
 
         if (targetCourse) {
             try {
@@ -177,7 +175,6 @@ export const DataProvider = ({ children }) => {
                 await setDoc(courseRef, targetCourse);
             } catch (e) {
                 console.error("Failed to delete exam", e);
-                setCourses(previous);
                 Alert.alert("ข้อผิดพลาด", "ไม่สามารถลบข้อมูลได้");
             }
         }
@@ -185,9 +182,6 @@ export const DataProvider = ({ children }) => {
 
     const addActivity = async (newActivity) => {
         if (!userInfo?.id) return;
-        setActivities(prev =>
-            [...prev, newActivity].sort((a, b) => new Date(a.time) - new Date(b.time))
-        );
 
         try {
             const activityRef = doc(db, "users", userInfo.id, "activities", newActivity.id);
@@ -195,29 +189,24 @@ export const DataProvider = ({ children }) => {
         } catch (e) {
             console.error("Failed to save activity", e);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถบันทึกข้อมูลได้");
-            setActivities(prev => prev.filter(a => a.id !== newActivity.id));
             throw e;
         }
     };
 
     const deleteActivity = async (id) => {
         if (!userInfo?.id) return;
-        const previous = [...activities];
-        setActivities(prev => prev.filter(a => a.id !== id));
 
         try {
             const activityRef = doc(db, "users", userInfo.id, "activities", id);
             await deleteDoc(activityRef);
         } catch (e) {
             console.error("Failed to delete activity", e);
-            setActivities(previous);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถลบข้อมูลได้");
         }
     };
 
     const addStudyPlanItem = async (newItem) => {
         if (!userInfo?.id) return;
-        setStudyPlanItems(prev => [...prev, newItem]);
 
         try {
             const itemRef = doc(db, "users", userInfo.id, "studyPlanItems", newItem.id);
@@ -225,7 +214,6 @@ export const DataProvider = ({ children }) => {
         } catch (e) {
             console.error("Failed to save study plan item", e);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถบันทึกรายการได้");
-            setStudyPlanItems(prev => prev.filter(i => i.id !== newItem.id));
             throw e;
         }
     };
@@ -236,6 +224,7 @@ export const DataProvider = ({ children }) => {
         if (!item) return;
 
         const updatedCompleted = !item.completed;
+        // Optimistically update
         setStudyPlanItems(prev =>
             prev.map(i => i.id === id ? { ...i, completed: updatedCompleted } : i)
         );
@@ -245,6 +234,8 @@ export const DataProvider = ({ children }) => {
             await updateDoc(itemRef, { completed: updatedCompleted });
         } catch (e) {
             console.error("Failed to update study plan item", e);
+            Alert.alert("ข้อผิดพลาด", "ไม่สามารถอัปเดตสถานะได้");
+            // Revert optimistic update
             setStudyPlanItems(prev =>
                 prev.map(i => i.id === id ? { ...i, completed: !updatedCompleted } : i)
             );
@@ -253,15 +244,12 @@ export const DataProvider = ({ children }) => {
 
     const deleteStudyPlanItem = async (id) => {
         if (!userInfo?.id) return;
-        const previous = [...studyPlanItems];
-        setStudyPlanItems(prev => prev.filter(i => i.id !== id));
 
         try {
             const itemRef = doc(db, "users", userInfo.id, "studyPlanItems", id);
             await deleteDoc(itemRef);
         } catch (e) {
             console.error("Failed to delete study plan item", e);
-            setStudyPlanItems(previous);
             Alert.alert("ข้อผิดพลาด", "ไม่สามารถลบรายการได้");
         }
     };
@@ -282,7 +270,7 @@ export const DataProvider = ({ children }) => {
             addStudyPlanItem,
             toggleStudyPlanItem,
             deleteStudyPlanItem,
-            refreshData: loadAllData,
+            refreshData: () => { }, // refreshData is no longer needed but kept for backward compatibility if any component calls it
         }}>
             {children}
         </DataContext.Provider>
