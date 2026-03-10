@@ -68,4 +68,60 @@ export const getUpcomingExams = (courses) => {
     upcomingExams.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return upcomingExams;
+}
+
+export const getAllClasses = (courses) => {
+    if (!courses || courses.length === 0) return [];
+
+    let allClasses = [];
+    const dayMap = { 'อาทิตย์': 0, 'จันทร์': 1, 'อังคาร': 2, 'พุธ': 3, 'พฤหัสบดี': 4, 'ศุกร์': 5, 'เสาร์': 6 };
+
+    courses.forEach(course => {
+        const courseSchedules = course.schedules || [{
+            id: 'legacy',
+            day: course.day,
+            startTime: course.startTime,
+            endTime: course.endTime
+        }];
+
+        courseSchedules.forEach(sch => {
+            if (!sch.day || !sch.startTime || !sch.endTime) return;
+            allClasses.push({
+                ...course,
+                day: sch.day,
+                startTime: sch.startTime,
+                endTime: sch.endTime,
+                dayIndex: dayMap[sch.day] || 0
+            });
+        });
+    });
+
+    allClasses.sort((a, b) => {
+        if (a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
+        const aStart = new Date(a.startTime);
+        const bStart = new Date(b.startTime);
+        return (aStart.getHours() * 60 + aStart.getMinutes()) - (bStart.getHours() * 60 + bStart.getMinutes());
+    });
+
+    return allClasses;
+};
+
+export const getAllExams = (courses) => {
+    if (!courses || courses.length === 0) return [];
+
+    let allExams = [];
+    courses.forEach(course => {
+        if (course.exams && Array.isArray(course.exams)) {
+            course.exams.forEach(exam => {
+                allExams.push({
+                    ...exam,
+                    subjectName: exam.subjectName || course.subjectName,
+                    subjectCode: exam.subjectCode || course.subjectCode,
+                });
+            });
+        }
+    });
+
+    allExams.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return allExams;
 };
