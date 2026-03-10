@@ -102,22 +102,37 @@ export default function PlanerScreen() {
                     <Text style={styles.emptyText}>ไม่มีกิจกรรม</Text>
                 </View>
             ) : (
-                activities.map((activity) => (
-                    <View key={activity.id} style={[styles.card, styles.activityCard]}>
-                        <View style={styles.activityInfo}>
-                            <Text style={styles.activityTitle}>{activity.title}</Text>
-                            <Text style={styles.activityTime}>
-                                {formatActivityDate(activity.date)} • {formatActivityTime(activity.time)} - {activity.endTime ? formatActivityTime(activity.endTime) : ''}
-                            </Text>
-                            {!!activity.description && (
-                                <Text style={styles.activityDesc}>{activity.description}</Text>
-                            )}
+                activities.map((activity) => {
+                    // Logic for displaying date ranges
+                    const hasStartDate = !!activity.startDate;
+                    const sameDay = hasStartDate &&
+                        new Date(activity.startDate).toDateString() === new Date(activity.endDate).toDateString();
+
+                    let timeDisplay = '';
+                    if (hasStartDate && !sameDay) {
+                        timeDisplay = `${formatActivityDate(activity.startDate)} ${formatActivityTime(activity.time)} - ${formatActivityDate(activity.endDate)} ${activity.endTime ? formatActivityTime(activity.endTime) : ''}`.trim();
+                    } else {
+                        let singleDateDisplay = hasStartDate ? formatActivityDate(activity.startDate) : formatActivityDate(activity.date);
+                        timeDisplay = `${singleDateDisplay} • ${formatActivityTime(activity.time)} - ${activity.endTime ? formatActivityTime(activity.endTime) : ''}`;
+                    }
+
+                    return (
+                        <View key={activity.id} style={[styles.card, styles.activityCard]}>
+                            <View style={styles.activityInfo}>
+                                <Text style={styles.activityTitle}>{activity.title}</Text>
+                                <Text style={styles.activityTime}>
+                                    {timeDisplay}
+                                </Text>
+                                {!!activity.description && (
+                                    <Text style={styles.activityDesc}>{activity.description}</Text>
+                                )}
+                            </View>
+                            <TouchableOpacity onPress={() => handleDeleteActivity(activity.id)} style={styles.deleteBtn}>
+                                <Trash2 size={20} color="#FF6347" />
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity onPress={() => handleDeleteActivity(activity.id)} style={styles.deleteBtn}>
-                            <Trash2 size={20} color="#FF6347" />
-                        </TouchableOpacity>
-                    </View>
-                ))
+                    );
+                })
             )}
         </View>
     );

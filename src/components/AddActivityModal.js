@@ -13,7 +13,8 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
 
     const initialFormState = {
         title: '',
-        date: new Date(),
+        startDate: new Date(),
+        endDate: new Date(),
         time: defaultTime,
         endTime: defaultEndTime,
         description: '',
@@ -51,20 +52,37 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
     };
 
     const handleAdd = () => {
-        const { title, date, time, endTime, description } = formData;
+        const { title, startDate, endDate, time, endTime, description } = formData;
 
         if (!title) {
             Alert.alert("ข้อผิดพลาด", "กรุณากรอกชื่อกิจกรรม");
             return;
         }
 
-        const activityDay = getThaiDay(date);
+        // Normalize dates to midnight to compare just the date part
+        const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+        if (endDay < startDay) {
+            Alert.alert("ข้อผิดพลาด", "วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น");
+            return;
+        }
+
         const activityStartMinutes = parseTimeToMinutes(time);
         const activityEndMinutes = parseTimeToMinutes(endTime);
 
-        if (activityEndMinutes <= activityStartMinutes) {
-            Alert.alert("ข้อผิดพลาด", "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น");
+        if (endDay.getTime() === startDay.getTime() && activityEndMinutes <= activityStartMinutes) {
+            Alert.alert("ข้อผิดพลาด", "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น (สำหรับกิจกรรมวันเดียว)");
             return;
+        }
+
+        // Check overlap across all active days in the range
+        // Get all dates from startDate to endDate
+        const activityDays = [];
+        let currentDate = new Date(startDay);
+        while (currentDate <= endDay) {
+            activityDays.push(getThaiDay(currentDate));
+            currentDate.setDate(currentDate.getDate() + 1);
         }
 
         const hasOverlap = courses.some(course => {
@@ -76,10 +94,11 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
             }];
 
             return courseSchedules.some(sch => {
-                if (sch.day === activityDay) {
+                if (activityDays.includes(sch.day)) {
                     const courseStart = parseTimeToMinutes(new Date(sch.startTime));
                     const courseEnd = parseTimeToMinutes(new Date(sch.endTime));
-                    // Check if activity time block overlaps with course time block
+
+                    // For multi-day activities, it basically blocks out the time block on every single active day.
                     if (
                         (activityStartMinutes >= courseStart && activityStartMinutes < courseEnd) ||
                         (activityEndMinutes > courseStart && activityEndMinutes <= courseEnd) ||
@@ -93,14 +112,17 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
         });
 
         if (hasOverlap) {
-            Alert.alert("ข้อผิดพลาด", "เวลาของกิจกรรมตรงกับเวลาเรียนในวันดังกล่าว");
+            Alert.alert("ข้อผิดพลาด", "เวลาของกิจกรรมตรงกับเวลาเรียนในบางวัน");
             return;
         }
 
         const newActivity = {
             id: Date.now().toString(),
             title,
-            date: date.toISOString(),
+            // Fallback for backwards compatibility
+            date: startDate.toISOString(),
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
             time: time.toISOString(),
             endTime: endTime.toISOString(),
             description,
@@ -141,9 +163,15 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
                             placeholderTextColor="#A0A0A0"
                         />
 
-                        <Text style={styles.inputLabel}>วันที่</Text>
-                        <TouchableOpacity style={styles.pickerButton} onPress={() => setShowPicker('date')}>
-                            <Text style={styles.pickerText}>{formatDate(formData.date)}</Text>
+                        <Text style={styles.inputLabel}>วันที่เริ่มต้น</Text>
+                        <TouchableOpacity style={styles.pickerButton} onPress={() => setShowPicker('startDate')}>
+                            <Text style={styles.pickerText}>{formatDate(formData.startDate)}</Text>
+                            <CalendarIcon size={20} color={COLORS.text} />
+                        </TouchableOpacity>
+
+                        <Text style={styles.inputLabel}>วันที่สิ้นสุด</Text>
+                        <TouchableOpacity style={styles.pickerButton} onPress={() => setShowPicker('endDate')}>
+                            <Text style={styles.pickerText}>{formatDate(formData.endDate)}</Text>
                             <CalendarIcon size={20} color={COLORS.text} />
                         </TouchableOpacity>
 
@@ -173,21 +201,20 @@ export default function AddActivityModal({ visible, onClose, onAddActivity, cour
 
                         {showPicker && (
                             <DateTimePicker
-                                value={showPicker === 'date' ? formData.date : showPicker === 'time' ? formData.time : formData.endTime}
-                                mode={showPicker === 'date' ? 'date' : 'time'}
+                                value={
+                                    showPicker === 'startDate' ? formData.startDate :
+                                        showPicker === 'endDate' ? formData.endDate :
+                                            showPicker === 'time' ? formData.time :
+                                                formData.endTime
+                                }
+                                mode={showPicker === 'startDate' || showPicker === 'endDate' ? 'date' : 'time'}
                                 is24Hour={true}
                                 display="default"
                                 onChange={(event, selectedDate) => {
                                     const pickerType = showPicker;
                                     setShowPicker(Platform.OS === 'ios' ? pickerType : null);
                                     if (selectedDate) {
-                                        if (pickerType === 'date') {
-                                            updateForm('date', selectedDate);
-                                        } else if (pickerType === 'time') {
-                                            updateForm('time', selectedDate);
-                                        } else if (pickerType === 'endTime') {
-                                            updateForm('endTime', selectedDate);
-                                        }
+                                        updateForm(pickerType, selectedDate);
                                     }
                                 }}
                             />
