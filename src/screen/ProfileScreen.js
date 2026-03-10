@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, LogOut, Building2, GraduationCap, Trash2, Edit3, BookOpen } from 'lucide-react-native';
@@ -10,8 +10,6 @@ import { DataContext } from '../context/DataContext';
 import ScreenHeader from '../components/ScreenHeader';
 import { FACULTIES, FACULTIES_AND_MAJORS } from '../constants/faculties';
 
-const YEARS = ['1', '2', '3', '4', '5', '6', '7', '8'];
-
 export default function ProfileScreen() {
     const { userInfo, logout, updateProfile } = useContext(AuthContext);
     const { clearAllData } = useContext(DataContext);
@@ -20,6 +18,8 @@ export default function ProfileScreen() {
     const [major, setMajor] = useState('');
     const [year, setYear] = useState('1');
     const [isEditing, setIsEditing] = useState(false);
+    const facultyPickerRef = useRef(null);
+    const majorPickerRef = useRef(null);
 
     useEffect(() => {
         if (userInfo) {
@@ -125,23 +125,33 @@ export default function ProfileScreen() {
                                     <Building2 size={18} color={COLORS.textSecondary} />
                                     <Text style={styles.inputLabel}>คณะ</Text>
                                 </View>
-                                <View style={[styles.pickerContainer, !isEditing && styles.pickerDisabled]}>
-                                    <Picker
-                                        selectedValue={faculty}
-                                        onValueChange={(itemValue) => {
-                                            setFaculty(itemValue);
-                                            setMajor('');
-                                        }}
-                                        style={styles.picker}
-                                        dropdownIconColor={COLORS.textSecondary}
-                                        enabled={isEditing}
+                                {isEditing ? (
+                                    <TouchableOpacity
+                                        style={styles.pickerTouchable}
+                                        activeOpacity={0.7}
+                                        onPress={() => facultyPickerRef.current?.focus()}
                                     >
-                                        <Picker.Item label="เลือกคณะ" value="" color={COLORS.textSecondary} style={{ fontSize: 16 }} enabled={false} />
-                                        {FACULTIES.map((item, index) => (
-                                            <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
-                                        ))}
-                                    </Picker>
-                                </View>
+                                        <Text style={styles.pickerDisplayText}>{faculty || 'เลือกคณะ'}</Text>
+                                        <Picker
+                                            ref={facultyPickerRef}
+                                            selectedValue={faculty}
+                                            onValueChange={(itemValue) => {
+                                                setFaculty(itemValue);
+                                                setMajor('');
+                                            }}
+                                            style={styles.pickerHidden}
+                                        >
+                                            <Picker.Item label="เลือกคณะ" value="" />
+                                            {FACULTIES.map((item, index) => (
+                                                <Picker.Item key={index} label={item} value={item} />
+                                            ))}
+                                        </Picker>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={[styles.input, styles.inputDisabled, { justifyContent: 'center' }]}>
+                                        <Text style={{ fontSize: 16, color: COLORS.text }}>{faculty || '-'}</Text>
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.inputGroup}>
@@ -149,20 +159,37 @@ export default function ProfileScreen() {
                                     <BookOpen size={18} color={COLORS.textSecondary} />
                                     <Text style={styles.inputLabel}>สาขาวิชา</Text>
                                 </View>
-                                <View style={[styles.pickerContainer, (!isEditing || !faculty) && styles.pickerDisabled]}>
-                                    <Picker
-                                        selectedValue={major}
-                                        onValueChange={(itemValue) => setMajor(itemValue)}
-                                        style={styles.picker}
-                                        dropdownIconColor={COLORS.textSecondary}
-                                        enabled={isEditing && !!faculty}
+                                {isEditing ? (
+                                    <TouchableOpacity
+                                        style={[styles.pickerTouchable, !faculty && styles.pickerDisabled]}
+                                        activeOpacity={0.7}
+                                        onPress={() => {
+                                            if (!faculty) {
+                                                Alert.alert('แจ้งเตือน', 'กรุณาเลือกคณะก่อนเลือกสาขาวิชา');
+                                            } else {
+                                                majorPickerRef.current?.focus();
+                                            }
+                                        }}
                                     >
-                                        <Picker.Item label="เลือกสาขาวิชา" value="" color={COLORS.textSecondary} style={{ fontSize: 16 }} enabled={false} />
-                                        {faculty ? FACULTIES_AND_MAJORS[faculty]?.map((item, index) => (
-                                            <Picker.Item key={index} label={item} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
-                                        )) : null}
-                                    </Picker>
-                                </View>
+                                        <Text style={[styles.pickerDisplayText, !faculty && { color: COLORS.textSecondary }]}>{major || 'เลือกสาขาวิชา'}</Text>
+                                        <Picker
+                                            ref={majorPickerRef}
+                                            selectedValue={major}
+                                            onValueChange={(itemValue) => setMajor(itemValue)}
+                                            style={styles.pickerHidden}
+                                            enabled={!!faculty}
+                                        >
+                                            <Picker.Item label="เลือกสาขาวิชา" value="" />
+                                            {faculty ? FACULTIES_AND_MAJORS[faculty]?.map((item, index) => (
+                                                <Picker.Item key={index} label={item} value={item} />
+                                            )) : null}
+                                        </Picker>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={[styles.input, styles.inputDisabled, { justifyContent: 'center' }]}>
+                                        <Text style={{ fontSize: 16, color: COLORS.text }}>{major || '-'}</Text>
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.inputGroup}>
@@ -170,20 +197,17 @@ export default function ProfileScreen() {
                                     <GraduationCap size={18} color={COLORS.textSecondary} />
                                     <Text style={styles.inputLabel}>ชั้นปี</Text>
                                 </View>
-                                <View style={[styles.pickerContainer, !isEditing && styles.pickerDisabled]}>
-                                    <Picker
-                                        selectedValue={year}
-                                        onValueChange={(itemValue) => setYear(itemValue)}
-                                        style={styles.picker}
-                                        dropdownIconColor={COLORS.textSecondary}
-                                        enabled={isEditing}
-                                    >
-                                        <Picker.Item label="เลือกชั้นปี" value="" color={COLORS.textSecondary} style={{ fontSize: 16 }} enabled={false} />
-                                        {YEARS.map((item, index) => (
-                                            <Picker.Item key={index} label={`ปี ${item}`} value={item} color={COLORS.text} style={{ fontSize: 16 }} />
-                                        ))}
-                                    </Picker>
-                                </View>
+                                {isEditing ? (
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="เช่น 1, 2, 3, 4"
+                                        keyboardType="numeric"
+                                        value={year}
+                                        onChangeText={(text) => setYear(text.replace(/[^0-9]/g, ''))}
+                                    />
+                                ) : (
+                                    <Text style={[styles.input, styles.inputDisabled]}>{year ? `ปี ${year}` : '-'}</Text>
+                                )}
                             </View>
 
                             {isEditing && (
@@ -421,9 +445,36 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: COLORS.white,
         overflow: 'hidden',
+        height: 50,
+        justifyContent: 'center',
+    },
+    pickerTouchable: {
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderRadius: 8,
+        backgroundColor: COLORS.white,
+        height: 50,
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        overflow: 'hidden',
+    },
+    pickerDisplayText: {
+        fontSize: 16,
+        color: COLORS.text,
+    },
+    pickerHidden: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        opacity: 0,
+        width: '100%',
+        height: '100%',
     },
     picker: {
         width: '100%',
+        height: 50,
         backgroundColor: 'transparent',
         color: COLORS.text,
     },

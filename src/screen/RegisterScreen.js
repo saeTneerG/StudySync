@@ -135,19 +135,14 @@ export default function RegisterScreen({ navigation }) {
                                     <GraduationCap size={16} color={COLORS.textSecondary} />
                                     <Text style={authStyles.label}>ชั้นปี</Text>
                                 </View>
-                                <View style={[authStyles.input, { paddingHorizontal: 0, justifyContent: 'center', overflow: 'hidden' }]}>
-                                    <Picker
-                                        selectedValue={year}
-                                        onValueChange={(itemValue) => setYear(itemValue)}
-                                        style={{ color: COLORS.text, width: '100%', height: '100%' }}
-                                        dropdownIconColor={COLORS.textSecondary}
-                                    >
-                                        <Picker.Item label="เลือกชั้นปี" value="" color={COLORS.textSecondary} style={{ fontSize: 15 }} enabled={false} />
-                                        {['1', '2', '3', '4'].map((item) => (
-                                            <Picker.Item key={item} label={`ปี ${item}`} value={item} color={COLORS.text} style={{ fontSize: 15 }} />
-                                        ))}
-                                    </Picker>
-                                </View>
+                                <TextInput
+                                    style={authStyles.input}
+                                    placeholder="เช่น 1, 2, 3, 4"
+                                    placeholderTextColor="#ccc"
+                                    keyboardType="numeric"
+                                    value={year}
+                                    onChangeText={(text) => setYear(text.replace(/[^0-9]/g, ''))}
+                                />
                             </View>
 
                             <View style={authStyles.inputWrapper}>
