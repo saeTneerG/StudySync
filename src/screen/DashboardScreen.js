@@ -15,7 +15,7 @@ export default function DashboardScreen() {
 
     const nextClass = useMemo(() => getNextClass(courses), [courses]);
     const upcomingExams = useMemo(() => getUpcomingExams(courses), [courses]);
-
+    //ควย
     return (
         <SafeAreaView style={sharedStyles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
